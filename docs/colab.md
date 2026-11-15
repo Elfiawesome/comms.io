@@ -18,9 +18,9 @@ The notebook:
 - does **not** mount Google Drive; every run can use a fresh Colab VM
 
 `RUN_MODE` supports `daily`, `refresh`, `repair`, `seeds`, `gallery-dl`, and
-`status`. `repair` refreshes every artist (useful after a rate-limited run that
-left missing works). `SEED_FILE` accepts a local path or an `https://`/raw GitHub
-URL.
+`status`. `repair` rebuilds every Skeb works page (useful after a rate-limited
+run that left missing works); it does not touch CREPE listings. `SEED_FILE`
+accepts a local path or an `https://`/raw GitHub URL.
 
 Data updates appear on the website immediately because the frontend reads the
 `data` branch through raw.githubusercontent.com. A Pages redeploy is only

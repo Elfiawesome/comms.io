@@ -231,8 +231,25 @@ def download_state(
 
 
 def _data_base(repo: str, branch: str, data_base: str | None) -> str:
-    base = data_base or f"https://raw.githubusercontent.com/{repo.strip('/')}/{branch}/"
-    return base if base.endswith("/") else base + "/"
+    if data_base:
+        return data_base if data_base.endswith("/") else data_base + "/"
+    clean_repo = repo.strip("/")
+    sha = _latest_commit_sha(clean_repo, branch)
+    if sha:
+        return f"https://raw.githubusercontent.com/{clean_repo}/{sha}/"
+    return f"https://raw.githubusercontent.com/{clean_repo}/{branch}/"
+
+
+def _latest_commit_sha(repo: str, branch: str) -> str | None:
+    url = f"https://api.github.com/repos/{repo}/commits/{urllib.parse.quote(branch, safe='')}"
+    try:
+        raw = _fetch_bytes(url)
+        data = json.loads(raw.decode("utf-8"))
+        sha = data.get("sha")
+        return str(sha) if sha else None
+    except Exception as exc:
+        log.warning("Could not resolve latest data commit; using branch URL: %s", exc)
+        return None
 
 
 def _state_base(repo: str, branch: str, data_base: str | None) -> str:

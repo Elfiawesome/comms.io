@@ -318,6 +318,8 @@ class SkebSource(Source):
 def _parse_work(site: str, aid: str, handle: str, item: Any, now: float) -> Work | None:
     if not isinstance(item, dict):
         return None
+    if item.get("private") is True:
+        return None
     path = str(item.get("path") or "")
     match = WORK_PATH_RE.search(path)
     site_work_id = match.group(2) if match else None

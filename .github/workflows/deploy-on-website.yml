@@ -1,0 +1,23 @@
+name: deploy-on-website
+
+# Runs from the default branch after website-ci succeeds. The reusable
+# deploy-site workflow is kept on master so it is not subject to the Pages
+# environment's default-branch deployment restriction.
+on:
+  workflow_run:
+    workflows: ["website-ci"]
+    types: [completed]
+    branches: [website]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit

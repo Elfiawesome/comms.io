@@ -1,5 +1,6 @@
 name: deploy-site
 
+# Requires repository Settings -> Pages -> Source: GitHub Actions.
 on:
   workflow_dispatch:
   workflow_call:

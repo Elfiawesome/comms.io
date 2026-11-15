@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 import tarfile
 import tempfile
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -122,6 +125,7 @@ class GitPublisher:
                 _run(["git", "-C", str(temp), "push", "origin", branch], env=env)
             commit = _run(["git", "-C", str(temp), "rev-parse", "HEAD"]).stdout.strip()
             log.info("Published %s to %s (%s)", source, branch, commit[:12])
+            deploy_triggered = self._trigger_deploy() if self.config.publish.trigger_deploy else False
             return {
                 "pushed": True,
                 "branch": branch,
@@ -129,10 +133,56 @@ class GitPublisher:
                 "bytes": total_bytes,
                 "backup": str(backup) if backup else None,
                 "message": commit_message,
+                "deploy_triggered": deploy_triggered,
             }
         finally:
             shutil.rmtree(temp, ignore_errors=True)
             shutil.rmtree(auth_dir, ignore_errors=True)
+
+    def _trigger_deploy(self) -> bool:
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if not token:
+            log.warning(
+                "GITHUB_TOKEN is not set; data was pushed but the Pages deploy was not triggered. "
+                "Run the deploy-site workflow manually."
+            )
+            return False
+        repo = self.config.publish.repo.strip("/")
+        workflow = self.config.publish.deploy_workflow
+        url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches"
+        body = json.dumps({"ref": self.config.publish.deploy_ref}).encode("utf-8")
+        request = urllib.request.Request(
+            url,
+            data=body,
+            method="POST",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "User-Agent": "comms.io-publisher",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                if 200 <= response.status < 300:
+                    log.info("Triggered Pages deploy workflow %s", workflow)
+                    return True
+                log.warning("Pages deploy dispatch returned HTTP %s", response.status)
+                return False
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            log.warning(
+                "Could not trigger %s (HTTP %s): %s. "
+                "The data branch is still updated; run the deploy workflow manually.",
+                workflow,
+                exc.code,
+                detail,
+            )
+            return False
+        except Exception as exc:
+            log.warning("Could not trigger %s: %s", workflow, exc)
+            return False
 
     def _backup(self, source: Path) -> Path | None:
         backup_dir_value = self.config.publish.backup_dir

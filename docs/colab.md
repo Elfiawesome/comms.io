@@ -15,6 +15,9 @@ The notebook:
   `/content/drive/MyDrive/comms.io/comms.sqlite3`
 - copies the `data` branch to a local worktree
 - runs a bounded crawl, exports Parquet, validates, and publishes
+- triggers the Pages deploy workflow after a successful data push (the token
+  needs `Actions: write`; if it does not have that, run the deploy workflow
+  manually from the Actions tab)
 
 A normal daily run should use conservative limits. If the session disconnects,
 rerun the notebook; the frontier and SQLite database resume where they stopped.

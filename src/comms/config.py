@@ -85,6 +85,10 @@ class PublishConfig(ConfigBase):
     remote: str = "origin"
     squash: bool = True
     backup_dir: str = "work/data-backups"
+    repo: str = "Elfiawesome/comms.io"
+    trigger_deploy: bool = True
+    deploy_workflow: str = "deploy-site.yml"
+    deploy_ref: str = "master"
 
 
 class ComplianceConfig(ConfigBase):

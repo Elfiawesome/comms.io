@@ -77,6 +77,12 @@ remote = "origin"
 squash = true
 # Optional: keep a local tarball backup before replacing the data branch.
 backup_dir = "work/data-backups"
+# The token used by git push must also have Actions: write for this dispatch.
+# If it does not, set trigger_deploy = false and run deploy-site manually.
+repo = "Elfiawesome/comms.io"
+trigger_deploy = true
+deploy_workflow = "deploy-site.yml"
+deploy_ref = "master"
 
 [compliance]
 # Optional file with one handle per line that must never be scraped or exported.

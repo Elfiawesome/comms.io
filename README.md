@@ -58,9 +58,14 @@ crawl, exports, and optionally publishes the `data` branch.
 
 Required Colab secrets:
 
-- `GITHUB_TOKEN` — token with `contents: write` for the repository
+- `GITHUB_TOKEN` — fine-grained token with `contents: write` and `actions: write`
+  for the repository. `contents: write` publishes the data branch; `actions:
+  write` lets the publisher trigger the Pages deploy workflow.
 - `SKEB_COOKIE` — optional; the Skeb source can extract `request_key` itself
 - `CREPE_COOKIE` — optional; only needed if a future Crepe endpoint requires it
+
+GitHub Pages must be configured with **Source: GitHub Actions** in repository
+Settings → Pages.
 
 ## Safety and scale
 

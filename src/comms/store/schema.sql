@@ -98,6 +98,8 @@ CREATE INDEX IF NOT EXISTS idx_works_artist
     ON works(artist_id);
 CREATE INDEX IF NOT EXISTS idx_works_site_created
     ON works(site, created_at);
+CREATE INDEX IF NOT EXISTS idx_works_artist_created
+    ON works(artist_id, created_at DESC, last_updated DESC);
 
 CREATE TABLE IF NOT EXISTS price_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

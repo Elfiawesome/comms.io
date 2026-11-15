@@ -52,6 +52,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMS_DATABASE: work/comms.sqlite3
+          # The deploy job below is the single deploy path for this workflow.
+          COMMS_TRIGGER_DEPLOY: "false"
         run: |
           python -m comms crawl --limit "${{ inputs.limit }}" ${{ inputs.publish && '--publish' || '' }}
 

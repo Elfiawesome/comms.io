@@ -149,6 +149,7 @@ def _apply_env_overrides(data: dict) -> None:
         "COMMS_DATA_BRANCH": ("publish", "branch"),
         "COMMS_REMOTE": ("publish", "remote"),
         "COMMS_MAX_DATA_MB": ("export", "max_data_mb"),
+        "COMMS_TRIGGER_DEPLOY": ("publish", "trigger_deploy"),
     }
     for env_name, path in mappings.items():
         value = os.environ.get(env_name)
@@ -159,6 +160,8 @@ def _apply_env_overrides(data: dict) -> None:
             target = target.setdefault(part, {})
         if path[-1] == "max_data_mb":
             target[path[-1]] = int(value)
+        elif path[-1] == "trigger_deploy":
+            target[path[-1]] = value.strip().lower() in {"1", "true", "yes", "on"}
         else:
             target[path[-1]] = value
 

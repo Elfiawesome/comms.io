@@ -1,5 +1,6 @@
 name: website-deploy
 
+# Requires repository Settings -> Pages -> Source: GitHub Actions.
 on:
   push:
     branches: [website]

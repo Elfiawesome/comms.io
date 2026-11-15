@@ -10,6 +10,7 @@
     queryArtists,
     queryArtistsByIds,
     queryFacets,
+    prepareViews,
     resolveDataBase
   } from './lib/queries';
   import type {
@@ -101,6 +102,8 @@
       await resolveDataBase();
       status = 'Loading manifest…';
       manifest = await loadManifest();
+      status = 'Preparing data views…';
+      await prepareViews(conn, manifest);
       status = 'Building facets…';
       const facets = await queryFacets(conn, manifest);
       sites = facets.sites;

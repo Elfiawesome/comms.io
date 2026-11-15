@@ -56,6 +56,29 @@ export async function loadManifest(): Promise<Manifest> {
   return manifest;
 }
 
+export async function prepareViews(
+  conn: AsyncDuckDBConnection,
+  manifest: Manifest
+): Promise<void> {
+  for (const table of ['artists', 'offerings', 'works', 'price_history']) {
+    const files = manifest.tables?.[table]?.files ?? [];
+    if (!files.length) {
+      throw new Error(`Manifest has no files for table "${table}".`);
+    }
+    const urls = files.map((file) => {
+      const url = new URL(file.path, DATA_BASE).toString();
+      return sqlString(
+        currentBuildId
+          ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(currentBuildId)}`
+          : url
+      );
+    });
+    await conn.query(
+      `CREATE OR REPLACE VIEW ${table} AS SELECT * FROM read_parquet([${urls.join(', ')}])`
+    );
+  }
+}
+
 export async function queryFacets(
   conn: AsyncDuckDBConnection,
   manifest: Manifest
@@ -175,12 +198,7 @@ function fromClause(manifest: Manifest, table: string): string {
   if (!files.length) {
     throw new Error(`Manifest has no files for table "${table}".`);
   }
-  const version = currentBuildId ? `?v=${encodeURIComponent(currentBuildId)}` : '';
-  const urls = files.map((file) => {
-    const url = new URL(file.path, DATA_BASE).toString();
-    return sqlString(version ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(currentBuildId)}` : url);
-  });
-  return `read_parquet([${urls.join(', ')}])`;
+  return table;
 }
 
 function ensureTrailingSlash(value: string): string {

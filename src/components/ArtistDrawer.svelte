@@ -100,9 +100,17 @@
         </section>
       {/if}
 
+      {#if loading}
+        <div class="drawer-status">Loading details…</div>
+      {/if}
+
       <section class="section">
         <h3>Price observations</h3>
-        <PriceChart points={priceHistory} />
+        {#if loading && !priceHistory.length}
+          <p class="empty">Loading…</p>
+        {:else}
+          <PriceChart points={priceHistory} />
+        {/if}
       </section>
 
       <section class="section">
@@ -138,6 +146,8 @@
               </a>
             {/each}
           </div>
+        {:else if loading}
+          <p class="empty">Loading commission types…</p>
         {:else}
           <p class="empty">No commission types stored yet.</p>
         {/if}
@@ -159,6 +169,8 @@
               </a>
             {/each}
           </div>
+        {:else if loading}
+          <p class="empty">Loading artwork…</p>
         {:else}
           <p class="empty">No artwork previews stored yet.</p>
         {/if}
@@ -447,6 +459,16 @@
   .empty {
     color: var(--muted);
     font-size: 13px;
+  }
+  .drawer-status {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    padding: 9px 12px;
+    margin-top: 18px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
   @media (max-width: 760px) {
     .drawer {

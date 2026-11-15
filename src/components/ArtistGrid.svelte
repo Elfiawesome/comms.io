@@ -24,7 +24,7 @@
   }
 </script>
 
-<div class="artist-grid">
+<div class="artist-grid" class:loading>
   {#if artists.length === 0 && !loading}
     <div class="empty-grid">
       No artists match these filters. If the archive is new, run the crawler and publish the data branch.
@@ -113,6 +113,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
+    transition: opacity 120ms ease;
+  }
+  .artist-grid.loading {
+    opacity: 0.45;
+    pointer-events: none;
   }
   .artist-card {
     background: var(--panel);

@@ -125,7 +125,9 @@ class GitPublisher:
                 _run(["git", "-C", str(temp), "push", "origin", branch], env=env)
             commit = _run(["git", "-C", str(temp), "rev-parse", "HEAD"]).stdout.strip()
             log.info("Published %s to %s (%s)", source, branch, commit[:12])
-            deploy_triggered = self._trigger_deploy() if self.config.publish.trigger_deploy else False
+            deploy_triggered = (
+                self._trigger_deploy() if self.config.publish.trigger_deploy else False
+            )
             return {
                 "pushed": True,
                 "branch": branch,

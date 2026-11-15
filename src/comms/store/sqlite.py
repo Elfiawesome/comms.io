@@ -94,6 +94,12 @@ class SQLiteStore:
         ).fetchone()
         return dict(row) if row else None
 
+    def existing_work_ids(self, artist_id: str) -> set[str]:
+        rows = self.conn.execute(
+            "SELECT work_id FROM works WHERE artist_id = ?", (artist_id,)
+        ).fetchall()
+        return {str(row["work_id"]) for row in rows}
+
     def upsert_bundle(self, bundle: ArtistBundle) -> str:
         artist = bundle.artist
         existing_id = self.resolve_artist_id(artist.site, artist.handle, artist.site_user_id)

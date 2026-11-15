@@ -36,7 +36,10 @@ compressed in SQLite for debugging; they are never exported.
 Built-in sources register through `comms.registry.register_source`:
 
 - `skeb` — public profile API, cookie extraction, conservative adaptive rate
-  limiting, skills as offerings, received works as works.
+  limiting, skills as offerings, and the paginated creator works endpoint.
+  The works endpoint returns at most 30 items per request, so the source pages
+  through it. After the first full crawl it stops as soon as a page contains no
+  works that are not already in SQLite.
 - `crepe` — public SSR profile pages. The page's `vike_pageContext` JSON is
   parsed directly, avoiding a browser. Commission type detail pages provide
   min/max prices.

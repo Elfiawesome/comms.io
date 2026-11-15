@@ -253,16 +253,7 @@ class SkebSource(Source):
                 )
             )
 
-        works: list[Work] = []
-        raw_works = profile.get("received_works")
-        if isinstance(raw_works, list):
-            limit = self.options.max_works_per_artist
-            for index, item in enumerate(raw_works):
-                if limit > 0 and index >= limit:
-                    break
-                work = _parse_work(self.site, aid, screen_name, item, now)
-                if work is not None:
-                    works.append(work)
+        works = await self._fetch_works(ctx, aid, screen_name, profile, now)
 
         return ArtistBundle(
             artist=artist,
@@ -271,6 +262,57 @@ class SkebSource(Source):
             price_points=price_points,
             raw=profile,
         )
+
+    async def _fetch_works(
+        self,
+        ctx: SourceContext,
+        aid: str,
+        handle: str,
+        profile: dict[str, Any],
+        now: float,
+    ) -> list[Work]:
+        works: dict[str, Work] = {}
+        raw_works = profile.get("received_works")
+        if isinstance(raw_works, list):
+            for item in raw_works:
+                work = _parse_work(self.site, aid, handle, item, now)
+                if work is not None:
+                    works[work.work_id] = work
+
+        existing = ctx.store.existing_work_ids(aid)
+        offset = 0
+        page = 0
+        page_size = max(1, self.options.work_page_size)
+        try:
+            while True:
+                endpoint = (
+                    f"users/{handle}/works?role=creator&sort=date&offset={offset}&limit={page_size}"
+                )
+                data = await self._get(endpoint, referer=f"{BASE}/@{handle}/works")
+                if not isinstance(data, list) or not data:
+                    break
+                page += 1
+                new_in_page = 0
+                for item in data:
+                    work = _parse_work(self.site, aid, handle, item, now)
+                    if work is None:
+                        continue
+                    if work.work_id not in existing:
+                        new_in_page += 1
+                    works.setdefault(work.work_id, work)
+                if existing and new_in_page == 0:
+                    break
+                if self.options.max_work_pages > 0 and page >= self.options.max_work_pages:
+                    break
+                if len(data) < page_size:
+                    break
+                offset += page_size
+        except Exception as exc:
+            log.warning("Skeb works pagination failed for %s: %s", handle, exc)
+
+        limit = self.options.max_works_per_artist
+        ordered = sorted(works.values(), key=lambda item: item.created_at or 0, reverse=True)
+        return ordered[:limit] if limit > 0 else ordered
 
 
 def _parse_work(site: str, aid: str, handle: str, item: Any, now: float) -> Work | None:

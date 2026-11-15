@@ -33,7 +33,11 @@ enabled = true
 discover_pages = 2
 discover_genre = "art"
 page_size = 90
-max_works_per_artist = 0  # 0 = keep all works returned by the profile
+max_works_per_artist = 0  # 0 = keep every work
+work_page_size = 30  # Skeb caps this endpoint at 30 per request
+# 0 = fetch all pages on the first run. Later runs stop as soon as a page has
+# no new works, so the normal daily cost is one extra request per artist.
+max_work_pages = 0
 extract_cookie = true
 impersonate = "chrome120"
 

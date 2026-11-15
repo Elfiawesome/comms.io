@@ -41,6 +41,11 @@ class SkebConfig(ConfigBase):
     discover_genre: str = "art"
     page_size: int = 90
     max_works_per_artist: int = 0
+    # Skeb caps this endpoint at 30 even when a larger limit is requested.
+    work_page_size: int = 30
+    # 0 = fetch all pages. Daily refreshes stop early once a page contains no
+    # works that are not already in SQLite.
+    max_work_pages: int = 0
     extract_cookie: bool = True
     impersonate: str = "chrome120"
 

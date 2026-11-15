@@ -46,8 +46,8 @@ jobs:
 
       - name: Add data snapshot
         run: |
-          mkdir -p site-src/dist/data
-          cp -R data-src/v1 site-src/dist/data/v1
+          mkdir -p site-src/dist/data/v1
+          cp -R data-src/. site-src/dist/data/v1/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

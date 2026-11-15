@@ -69,8 +69,9 @@ CREATE TABLE IF NOT EXISTS offerings (
     active INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_offerings_site_site_id
-    ON offerings(site, site_offering_id)
+DROP INDEX IF EXISTS idx_offerings_site_site_id;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_offerings_artist_site_id
+    ON offerings(site, artist_id, site_offering_id)
     WHERE site_offering_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_offerings_artist
     ON offerings(artist_id);

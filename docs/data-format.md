@@ -50,10 +50,12 @@ state/part-00000.bin ...
 
 - `artists` — one row per artist. Includes sorted-filter helpers
   `price_min_usd`, `price_max_usd`, `price_min_jpy`, `price_max_jpy`,
-  `offerings_count`, `last_updated`, and `search_text`.
+  `offerings_count`, `last_updated`, and `search_text`. `latest_thumbnails`
+  contains up to four artwork URLs for card previews. Skeb works are preferred;
+  CREPE artists without stored works fall back to commission-type cover images.
 - `offerings` — one row per commission type/skill. Prices are stored in the
   original currency (`price_min`, `price_max`, `currency`) and normalized USD
-  fields for sorting.
+  fields for sorting. `cover_url` holds the CREPE listing cover when available.
 - `works` — optional work/portfolio metadata and thumbnail URLs. No images are
   stored in Git.
 - `price_history` — append-only observations. A new row is written only when

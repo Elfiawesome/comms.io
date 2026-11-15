@@ -42,9 +42,10 @@ class ParquetExporter:
         opt_outs = opt_out_pairs or set()
         excluded_artist_ids: set[str] = set()
         tables: dict[str, dict[str, Any]] = {}
+        thumbnails = store.latest_thumbnails(4)
 
         all_rows: dict[str, list[dict[str, Any]]] = {}
-        artists = list(self._artist_rows(store, opt_outs, excluded_artist_ids))
+        artists = list(self._artist_rows(store, opt_outs, excluded_artist_ids, thumbnails))
         all_rows["artists"] = artists
         all_rows["offerings"] = list(self._offering_rows(store, opt_outs, excluded_artist_ids))
         all_rows["works"] = list(self._work_rows(store, opt_outs, excluded_artist_ids))
@@ -126,6 +127,7 @@ class ParquetExporter:
         store: SQLiteStore,
         opt_outs: set[tuple[str, str]],
         excluded_artist_ids: set[str],
+        thumbnails: dict[str, list[str]],
     ):
         for row in store.iter_artists_for_export():
             site = str(row["site"])
@@ -155,6 +157,7 @@ class ParquetExporter:
                 "price_max_usd": row.get("price_max_usd"),
                 "price_min_jpy": row.get("price_min_jpy"),
                 "price_max_jpy": row.get("price_max_jpy"),
+                "latest_thumbnails": thumbnails.get(str(row["artist_id"]), []),
                 "first_seen": row.get("first_seen"),
                 "last_updated": row.get("last_updated"),
                 "last_seen": row.get("last_seen"),
@@ -198,6 +201,7 @@ class ParquetExporter:
                 "price_usd": row.get("price_usd"),
                 "price_min_usd": row.get("price_min_usd"),
                 "price_max_usd": row.get("price_max_usd"),
+                "cover_url": row.get("cover_url"),
                 "turnaround_days": row.get("turnaround_days"),
                 "slots": row.get("slots"),
                 "available": _bool_or_none(row.get("available")),

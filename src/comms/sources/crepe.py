@@ -146,8 +146,8 @@ class CrepeSource(Source):
             handle=username,
             display_name=user.get("name") or username,
             profile_url=user_url,
-            avatar_url=user.get("profileImageUrl"),
-            header_url=user.get("headerImageUrl"),
+            avatar_url=_clean_url(user.get("profileImageUrl")),
+            header_url=_clean_url(user.get("headerImageUrl")),
             bio=_doc_text(user.get("bio")),
             tags=tag_names,
             nsfw=nsfw,
@@ -332,6 +332,7 @@ def _offering_from_record(
         price_usd=price_usd,
         price_min_usd=price_min_usd,
         price_max_usd=price_max_usd,
+        cover_url=_clean_url(record.get("coverImageUrl")),
         turnaround_days=None,
         slots=None,
         available=_optional_bool(record.get("inquiryAvailable")),
@@ -398,3 +399,9 @@ def _optional_bool(value: Any) -> bool | None:
     if value is None:
         return None
     return bool(value)
+
+
+def _clean_url(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return value.replace("\\/", "/")

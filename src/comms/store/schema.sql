@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS offerings (
     price_usd REAL,
     price_min_usd REAL,
     price_max_usd REAL,
+    cover_url TEXT,
     turnaround_days INTEGER,
     slots INTEGER,
     available INTEGER,

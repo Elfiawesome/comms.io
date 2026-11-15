@@ -35,6 +35,7 @@ class SQLiteStore:
 
     def _initialize(self) -> None:
         self.conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        self._ensure_column("offerings", "cover_url", "TEXT")
         self.conn.execute(
             "INSERT INTO meta(key, value) VALUES('schema_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -69,6 +70,13 @@ class SQLiteStore:
         except Exception:
             self.conn.rollback()
             raise
+
+    def _ensure_column(self, table: str, column: str, declaration: str) -> None:
+        columns = {
+            str(row["name"]) for row in self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if column not in columns:
+            self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
 
     def _meta(self, key: str) -> str | None:
         row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
@@ -106,6 +114,51 @@ class SQLiteStore:
             "SELECT work_id FROM works WHERE artist_id = ?", (artist_id,)
         ).fetchall()
         return {str(row["work_id"]) for row in rows}
+
+    def latest_thumbnails(self, limit: int = 4) -> dict[str, list[str]]:
+        """Return up to ``limit`` artwork URLs per artist.
+
+        Skeb works are preferred. CREPE artists without stored works fall back
+        to their commission-type cover images, so every card has a preview
+        where the source provides one.
+        """
+        if limit <= 0:
+            return {}
+        result: dict[str, list[str]] = {}
+        work_rows = self.conn.execute(
+            """
+            SELECT artist_id, thumb_url
+            FROM (
+                SELECT artist_id, thumb_url,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY artist_id
+                           ORDER BY COALESCE(created_at, 0) DESC, last_updated DESC
+                       ) AS row_number
+                FROM works
+                WHERE thumb_url IS NOT NULL AND thumb_url <> ''
+            )
+            WHERE row_number <= ?
+            ORDER BY artist_id, row_number
+            """,
+            (limit,),
+        ).fetchall()
+        for row in work_rows:
+            result.setdefault(str(row["artist_id"]), []).append(str(row["thumb_url"]))
+
+        cover_rows = self.conn.execute(
+            """
+            SELECT artist_id, cover_url
+            FROM offerings
+            WHERE cover_url IS NOT NULL AND cover_url <> ''
+            ORDER BY active DESC, COALESCE(price_min_usd, price_usd) ASC, last_updated DESC
+            """
+        ).fetchall()
+        for row in cover_rows:
+            bucket = result.setdefault(str(row["artist_id"]), [])
+            cover = str(row["cover_url"])
+            if len(bucket) < limit and cover not in bucket:
+                bucket.append(cover)
+        return result
 
     def upsert_bundle(self, bundle: ArtistBundle) -> str:
         artist = bundle.artist
@@ -205,9 +258,9 @@ class SQLiteStore:
             INSERT INTO offerings (
                 offering_id, artist_id, site, site_offering_id, title, kind,
                 description, price_min, price_max, currency, price_usd,
-                price_min_usd, price_max_usd, turnaround_days, slots, available,
+                price_min_usd, price_max_usd, cover_url, turnaround_days, slots, available,
                 tags_json, source_url, first_seen, last_updated, active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(offering_id) DO UPDATE SET
                 site_offering_id = COALESCE(excluded.site_offering_id, offerings.site_offering_id),
                 title = COALESCE(excluded.title, offerings.title),
@@ -219,6 +272,7 @@ class SQLiteStore:
                 price_usd = excluded.price_usd,
                 price_min_usd = excluded.price_min_usd,
                 price_max_usd = excluded.price_max_usd,
+                cover_url = COALESCE(excluded.cover_url, offerings.cover_url),
                 turnaround_days = COALESCE(excluded.turnaround_days, offerings.turnaround_days),
                 slots = excluded.slots,
                 available = excluded.available,
@@ -241,6 +295,7 @@ class SQLiteStore:
                 offering.price_usd,
                 offering.price_min_usd,
                 offering.price_max_usd,
+                offering.cover_url,
                 offering.turnaround_days,
                 offering.slots,
                 _bool_to_int(offering.available),

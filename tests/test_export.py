@@ -31,6 +31,7 @@ def _bundle() -> ArtistBundle:
         price_usd=33.5,
         price_min_usd=33.5,
         price_max_usd=33.5,
+        cover_url="https://example.invalid/cover.png",
         tags=["art"],
     )
     work = Work(
@@ -68,6 +69,16 @@ def test_export_and_validate(tmp_path: Path) -> None:
     assert (target / "artists").exists()
     report = validate_data_dir(target, max_data_mb=10)
     assert report["tables"]["artists"]["rows"] == 1
+
+    import pyarrow.parquet as pq
+
+    artists = pq.read_table(next((target / "artists").glob("*.parquet"))).to_pylist()
+    assert artists[0]["latest_thumbnails"] == [
+        "https://example.invalid/thumb.jpg",
+        "https://example.invalid/cover.png",
+    ]
+    offerings = pq.read_table(next((target / "offerings").glob("*.parquet"))).to_pylist()
+    assert offerings[0]["cover_url"] == "https://example.invalid/cover.png"
 
 
 def test_publish_dry_run(tmp_path: Path) -> None:

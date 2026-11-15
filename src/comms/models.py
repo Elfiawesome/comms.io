@@ -65,6 +65,7 @@ class Offering(Model):
     price_usd: float | None = None
     price_min_usd: float | None = None
     price_max_usd: float | None = None
+    cover_url: str | None = None
     turnaround_days: int | None = None
     slots: int | None = None
     available: bool | None = None

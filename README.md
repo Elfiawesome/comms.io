@@ -26,9 +26,8 @@ npm.cmd run dev
 npm.cmd run build
 ```
 
-A successful `website-ci` run triggers `deploy-on-website` on `master`, which
-calls the reusable Pages workflow. It builds this branch and writes a
-`data-config.json` that points at:
+A push to `website` triggers `website-deploy`, which builds this branch and
+writes a `data-config.json` that points at:
 
 ```text
 https://raw.githubusercontent.com/Elfiawesome/comms.io/data/

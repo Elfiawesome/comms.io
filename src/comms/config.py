@@ -67,6 +67,11 @@ class TwitterConfig(ConfigBase):
     gallery_dl_url: str = "https://x.com/search?q=skeb&f=live"
     gallery_dl_sleep: float = 3.0
     cookies_file: str = "cookies.txt"
+    # Optional: visit link-in-bio pages found in X metadata and look for
+    # Skeb/CREPE profile links. This is rate-limited but is disabled by default
+    # because it adds one external request per discovered bio page.
+    follow_bio_links: bool = False
+    max_bio_links: int = 200
 
 
 class SourcesConfig(ConfigBase):

@@ -63,6 +63,10 @@ gallery_dl_url = "https://x.com/search?q=skeb&f=live"
 gallery_dl_sleep = 3.0
 # Optional Netscape-format cookies exported from a logged-in browser.
 cookies_file = "cookies.txt"
+# Optional: follow lit.link/linktree/etc. pages from X bios to find profile
+# links. Disabled by default because each page is an external request.
+follow_bio_links = false
+max_bio_links = 200
 
 [export]
 format = "parquet"

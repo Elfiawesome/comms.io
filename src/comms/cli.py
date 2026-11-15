@@ -8,6 +8,7 @@ from pathlib import Path
 
 import typer
 
+from comms.bio_links import follow_bio_links
 from comms.config import AppConfig, load_config
 from comms.exporters.parquet import ParquetExporter
 from comms.logging import get_logger, setup_logging
@@ -20,6 +21,7 @@ from comms.seeds import (
     load_seed_dir,
     load_seed_file,
     run_gallery_dl,
+    scan_gallery_dl_bio_links,
 )
 from comms.store.sqlite import SQLiteStore
 from comms.validate import ValidationError, validate_data_dir
@@ -148,15 +150,41 @@ def crawl(
         seeds.extend(load_seed_file(file_name, priority=100))
     for directory in directories or []:
         seeds.extend(load_seed_dir(directory, priority=100))
+    metadata_dirs: list[Path] = []
     if run_gallery_dl_now:
         output = run_gallery_dl(
             config.sources.twitter, workspace=Path(config.sources.twitter.metadata_dir)
         )
-        seeds.extend(import_gallery_dl_metadata(output))
+        metadata_dirs.append(output)
     if gallery_dl_dir:
-        seeds.extend(import_gallery_dl_metadata(gallery_dl_dir))
+        metadata_dirs.append(Path(gallery_dl_dir))
     if config.sources.twitter.enabled and Path(config.sources.twitter.metadata_dir).exists():
-        seeds.extend(import_gallery_dl_metadata(config.sources.twitter.metadata_dir))
+        metadata_dirs.append(Path(config.sources.twitter.metadata_dir))
+    for directory in dict.fromkeys(metadata_dirs):
+        seeds.extend(import_gallery_dl_metadata(directory))
+
+    if config.sources.twitter.follow_bio_links and metadata_dirs:
+        bio_links: list[str] = []
+        for directory in dict.fromkeys(metadata_dirs):
+            bio_links.extend(
+                scan_gallery_dl_bio_links(
+                    directory,
+                    limit=config.sources.twitter.max_bio_links,
+                )
+            )
+        bio_links = list(dict.fromkeys(bio_links))[: config.sources.twitter.max_bio_links]
+        if bio_links:
+            typer.echo(f"Following {len(bio_links)} bio link(s)…")
+            seeds.extend(
+                asyncio.run(
+                    follow_bio_links(
+                        bio_links,
+                        config,
+                        max_links=config.sources.twitter.max_bio_links,
+                    )
+                )
+            )
+
     seeds.extend(_seed_dir_from_config(config))
 
     with _open_store(config) as store:

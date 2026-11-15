@@ -49,6 +49,8 @@ Discovery is separate from fetching:
 - Skeb listing pages (bounded by `discover_pages`).
 - CREPE homepage (robots.txt allows `/en$` and profile pages `/en/@...`).
 - gallery-dl JSON metadata from X, imported as seed handles.
+- Optional link-in-bio resolver for lit.link/linktree/carrd/etc. pages found in
+  X metadata. It is rate-limited and disabled by default.
 - Markdown/CSV/JSON seed files, including the old `skeb_album.md` format.
 
 Third-party sources can be installed as Python packages exposing the

@@ -72,3 +72,20 @@ def test_frontier_lifecycle(tmp_path: Path) -> None:
         store.complete_frontier("skeb", "alice")
         assert store.pop_due("skeb") is None
         assert store.queued_count("skeb") == {"done": 1}
+
+
+def test_stale_refresh_resets_completed_frontier(tmp_path: Path) -> None:
+    bundle = make_bundle()
+    bundle.artist.last_updated = 1.0
+    with SQLiteStore(tmp_path / "archive.sqlite") as store:
+        store.upsert_bundle(bundle)
+        store.enqueue("skeb", "alice")
+        assert store.pop_due("skeb") is not None
+        store.complete_frontier("skeb", "alice")
+        assert store.pop_due("skeb") is None
+
+        queued = store.enqueue_stale_artists("skeb", stale_hours=0, limit=10)
+        assert queued == 1
+        row = store.pop_due("skeb")
+        assert row is not None
+        assert row["handle"] == "alice"

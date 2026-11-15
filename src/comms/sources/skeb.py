@@ -9,6 +9,7 @@ from curl_cffi.requests import AsyncSession
 
 from comms.config import SkebConfig
 from comms.fx import to_usd
+from comms.http import BudgetExceeded, RateLimitError
 from comms.ids import artist_id, normalize_handle, offering_id, stable_id, work_id
 from comms.logging import get_logger
 from comms.models import Artist, ArtistBundle, Offering, PricePoint, Seed, Work
@@ -99,8 +100,6 @@ class SkebSource(Source):
 
         if response.status_code == 429:
             self.limiter.report_429()
-            from comms.http import RateLimitError
-
             raise RateLimitError(f"429 Too Many Requests: {url}")
         if response.status_code in (401, 403) and retry_auth:
             await self._refresh_cookie(ctx)
@@ -280,6 +279,8 @@ class SkebSource(Source):
                     works[work.work_id] = work
 
         existing = ctx.store.existing_work_ids(aid)
+        expected = _optional_int(profile.get("received_works_count"))
+        needs_backfill = expected is not None and len(existing) < expected
         offset = 0
         page = 0
         page_size = max(1, self.options.work_page_size)
@@ -300,13 +301,15 @@ class SkebSource(Source):
                     if work.work_id not in existing:
                         new_in_page += 1
                     works.setdefault(work.work_id, work)
-                if existing and new_in_page == 0:
+                if existing and new_in_page == 0 and not needs_backfill:
                     break
                 if self.options.max_work_pages > 0 and page >= self.options.max_work_pages:
                     break
                 if len(data) < page_size:
                     break
                 offset += page_size
+        except (RateLimitError, BudgetExceeded):
+            raise
         except Exception as exc:
             log.warning("Skeb works pagination failed for %s: %s", handle, exc)
 

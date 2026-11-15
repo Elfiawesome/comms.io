@@ -466,7 +466,7 @@ class SQLiteStore:
             (site, cutoff, limit),
         ).fetchall()
         for row in rows:
-            self.enqueue(site, str(row["handle"]), priority=10, source=source)
+            self.enqueue(site, str(row["handle"]), priority=10, source=source, reset=True)
         self.conn.commit()
         return len(rows)
 

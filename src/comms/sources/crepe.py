@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 from comms.config import CrepeConfig
 from comms.fx import to_usd
-from comms.http import HttpClient, RobotsDenied
+from comms.http import BudgetExceeded, HttpClient, RateLimitError, RobotsDenied
 from comms.ids import artist_id, normalize_handle, offering_id
 from comms.logging import get_logger
 from comms.models import Artist, ArtistBundle, Offering, PricePoint, Seed
@@ -181,6 +181,8 @@ class CrepeSource(Source):
                             for tag in _tag_names(detail_records, found):
                                 if tag not in tag_names:
                                     tag_names.append(tag)
+                except (RateLimitError, BudgetExceeded):
+                    raise
                 except Exception as exc:
                     log.warning("CREPE type detail failed for %s/%s: %s", username, slug, exc)
             offering = _offering_from_record(

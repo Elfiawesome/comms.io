@@ -137,6 +137,11 @@ def crawl(
     ),
     discover: bool = typer.Option(True, "--discover/--no-discover"),
     refresh: bool = typer.Option(True, "--refresh/--no-refresh"),
+    refresh_all: bool = typer.Option(
+        False,
+        "--refresh-all",
+        help="Refresh every artist, ignoring refresh_stale_hours",
+    ),
     limit: int = typer.Option(
         0, "--limit", help="Max artists fetched per site (0 = until frontier empty)"
     ),
@@ -160,6 +165,8 @@ def crawl(
     config = _load(config_path, log_level)
     if max_runtime is not None:
         config.run.max_runtime_minutes = max_runtime
+    if refresh_all:
+        config.run.refresh_stale_hours = 0.0
 
     if sync_state:
         try:

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Artist, Offering, PricePoint, Work } from '../lib/types';
-  import { fmtCompact, fmtDate, fmtInt, fmtOriginal, fmtUsd, offeringPrice, siteLabel, toNum } from '../lib/format';
+  import { fmtCompact, fmtDate, fmtInt, fmtOriginal, fmtUsd, offeringPrice, siteLabel } from '../lib/format';
   import PriceChart from './PriceChart.svelte';
 
   export let artist: Artist | null = null;
@@ -13,7 +13,6 @@
   export let onToggleWatch: (artist: Artist) => void = () => {};
 
   $: tags = artist?.tags || [];
-  $: workCount = toNum(artist?.works_count);
   $: gallery = buildGallery(works, offerings);
 
   function buildGallery(workItems: Work[], offeringItems: Offering[]) {

@@ -26,7 +26,8 @@ npm.cmd run dev
 npm.cmd run build
 ```
 
-The GitHub Actions deploy workflow builds this branch and writes a
+A successful `website-ci` run triggers `deploy-on-website` on `master`, which
+calls the reusable Pages workflow. It builds this branch and writes a
 `data-config.json` that points at:
 
 ```text

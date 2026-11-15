@@ -22,9 +22,9 @@ export async function resolveDataBase(): Promise<string> {
   }
 
   try {
-    const response = await fetch(new URL('data-config.json', document.baseURI), {
-      cache: 'no-store'
-    });
+    const configUrl = new URL('data-config.json', document.baseURI);
+    configUrl.searchParams.set('t', String(Date.now()));
+    const response = await fetch(configUrl, { cache: 'no-store' });
     if (response.ok) {
       const config = (await response.json()) as { base?: unknown };
       if (typeof config.base === 'string' && config.base) {
@@ -45,7 +45,9 @@ export function getDataBase(): string {
 }
 
 export async function loadManifest(): Promise<Manifest> {
-  const response = await fetch(new URL('manifest.json', DATA_BASE), { cache: 'no-store' });
+  const manifestUrl = new URL('manifest.json', DATA_BASE);
+  manifestUrl.searchParams.set('t', String(Date.now()));
+  const response = await fetch(manifestUrl, { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(
       `No data manifest found at ${DATA_BASE} (HTTP ${response.status}). Run the archiver and publish the data branch.`

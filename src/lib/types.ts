@@ -47,6 +47,7 @@ export interface Artist {
   price_max_usd?: Num;
   price_min_jpy?: Num;
   price_max_jpy?: Num;
+  latest_thumbnails?: string[] | null;
   first_seen?: Num;
   last_updated?: Num;
   last_seen?: Num;
@@ -68,6 +69,7 @@ export interface Offering {
   price_usd?: Num;
   price_min_usd?: Num;
   price_max_usd?: Num;
+  cover_url?: string | null;
   turnaround_days?: Num;
   slots?: Num;
   available?: boolean | null;

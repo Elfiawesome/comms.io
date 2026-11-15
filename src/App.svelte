@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { AsyncDuckDBConnection } from '@duckdb/duckdb-wasm';
-  import ArtistTable from './components/ArtistTable.svelte';
+  import ArtistGrid from './components/ArtistGrid.svelte';
   import ArtistDrawer from './components/ArtistDrawer.svelte';
   import { getDuckSession } from './lib/duckdb';
   import {
@@ -476,7 +476,7 @@
       <span>{loading ? 'Querying…' : 'Metadata only — open a profile to view the source.'}</span>
     </div>
 
-    <ArtistTable
+    <ArtistGrid
       {artists}
       {total}
       {page}

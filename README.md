@@ -47,6 +47,13 @@ On boot the site resolves the data base in this order:
 It then reads `manifest.json` and queries the Parquet files listed in it with
 DuckDB-WASM. Parquet URLs are cache-busted with the manifest `build_id`.
 
+## UI
+
+Dark, flat, square-cornered card grid. Each artist card shows up to four recent
+artwork thumbnails (or CREPE listing covers when no works are stored). The
+artist drawer shows the artwork gallery, commission types with covers, and
+price observations.
+
 ## Watchlists and lists
 
 Watchlists are local-first and stored in `localStorage`. You can create named

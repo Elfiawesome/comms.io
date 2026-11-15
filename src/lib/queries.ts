@@ -256,8 +256,31 @@ async function runQuery<T>(
   const result = await statement.query(...params);
   return result.toArray().map((row: unknown) => {
     const candidate = row as { toJSON?: () => Record<string, unknown> };
-    return (typeof candidate.toJSON === 'function' ? candidate.toJSON() : candidate) as T;
+    const value = typeof candidate.toJSON === 'function' ? candidate.toJSON() : candidate;
+    return normalizeValue(value) as T;
   });
+}
+
+function normalizeValue(value: any): any {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) return value.map(normalizeValue);
+  if (typeof value !== 'object') return value;
+  if (typeof value.toArray === 'function') return value.toArray().map(normalizeValue);
+  if (typeof value.length === 'number' && typeof value.get === 'function') {
+    return Array.from({ length: value.length }, (_, index) => normalizeValue(value.get(index)));
+  }
+  if (typeof value[Symbol.iterator] === 'function' && !(value instanceof Date)) {
+    return Array.from(value, normalizeValue);
+  }
+  const keys = Object.keys(value);
+  if (keys.length && keys.every((key) => /^\d+$/.test(key))) {
+    return keys
+      .sort((a, b) => Number(a) - Number(b))
+      .map((key) => normalizeValue(value[key]));
+  }
+  const result: Record<string, any> = {};
+  for (const key of keys) result[key] = normalizeValue(value[key]);
+  return result;
 }
 
 function sqlString(value: string): string {

@@ -43,8 +43,8 @@
     <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Price history chart">
       <defs>
         <linearGradient id="price-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.32" />
-          <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+          <stop offset="0%" stop-color="var(--text)" stop-opacity="0.32" />
+          <stop offset="100%" stop-color="var(--text)" stop-opacity="0" />
         </linearGradient>
       </defs>
       {#each [0, 0.25, 0.5, 0.75, 1] as ratio}
@@ -63,14 +63,14 @@
       <path d={linePath} class="line" />
       {#each usable as point}
         <circle cx={x(point.xValue ?? 0)} cy={y(point.yValue ?? 0)} r="3.5" class="dot">
-          <title>{fmtDate(point.observed_at)} · {fmtUsd(point.amount_usd)}</title>
+          <title>{fmtDate(point.observed_at)} Â· {fmtUsd(point.amount_usd)}</title>
         </circle>
       {/each}
       <text x={pad.left} y={height - 6} class="axis-label">{fmtDate(minX)}</text>
       <text x={width - pad.right} y={height - 6} text-anchor="end" class="axis-label">{fmtDate(maxX)}</text>
     </svg>
     {#if last}
-      <div class="chart-last">Latest: {fmtUsd(last.amount_usd)} · {fmtDate(last.observed_at)}</div>
+      <div class="chart-last">Latest: {fmtUsd(last.amount_usd)} Â· {fmtDate(last.observed_at)}</div>
     {/if}
   </div>
 {/if}
@@ -98,14 +98,14 @@
   }
   .line {
     fill: none;
-    stroke: #38bdf8;
+    stroke: var(--text);
     stroke-width: 2.5;
     stroke-linejoin: round;
     stroke-linecap: round;
   }
   .dot {
-    fill: #0b1120;
-    stroke: #7dd3fc;
+    fill: var(--bg);
+    stroke: var(--text);
     stroke-width: 2;
   }
   .chart-last {
@@ -121,3 +121,4 @@
     border-radius: 12px;
   }
 </style>
+

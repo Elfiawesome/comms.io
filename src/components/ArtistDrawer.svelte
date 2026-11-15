@@ -14,6 +14,27 @@
 
   $: tags = artist?.tags || [];
   $: workCount = toNum(artist?.works_count);
+  $: gallery = buildGallery(works, offerings);
+
+  function buildGallery(workItems: Work[], offeringItems: Offering[]) {
+    const seen = new Set<string>();
+    const items: { src: string; href: string | null | undefined; label: string }[] = [];
+    for (const work of workItems) {
+      if (!work.thumb_url || seen.has(work.thumb_url)) continue;
+      seen.add(work.thumb_url);
+      items.push({ src: work.thumb_url, href: work.source_url, label: work.title || 'Work' });
+    }
+    for (const offering of offeringItems) {
+      if (!offering.cover_url || seen.has(offering.cover_url)) continue;
+      seen.add(offering.cover_url);
+      items.push({
+        src: offering.cover_url,
+        href: offering.source_url,
+        label: offering.title || offering.kind || 'Commission'
+      });
+    }
+    return items.slice(0, 32);
+  }
 </script>
 
 <div class="backdrop" role="presentation" on:click={onClose}>
@@ -28,7 +49,7 @@
     on:click|stopPropagation
     on:keydown|stopPropagation
   >
-    <button class="close" aria-label="Close details" on:click={onClose}>×</button>
+    <button class="close" aria-label="Close details" on:click={onClose}>Ã—</button>
 
     {#if artist}
       <header class="drawer-head">
@@ -47,10 +68,10 @@
           <p>@{artist.handle}</p>
           <div class="head-actions">
             <button class="watch" class:active={watched} on:click={() => onToggleWatch(artist)}>
-              {watched ? '★ Watching' : '☆ Watch'}
+              {watched ? 'â˜… Watching' : 'â˜† Watch'}
             </button>
             {#if artist.profile_url}
-              <a href={artist.profile_url} target="_blank" rel="noreferrer">Open profile ↗</a>
+              <a href={artist.profile_url} target="_blank" rel="noreferrer">Open profile â†—</a>
             {/if}
           </div>
         </div>
@@ -91,7 +112,19 @@
           <div class="offering-list">
             {#each offerings as offering}
               <a class="offering" href={offering.source_url || artist.profile_url} target="_blank" rel="noreferrer">
-                <div>
+                {#if offering.cover_url}
+                  <img
+                    class="offering-cover"
+                    src={offering.cover_url}
+                    alt=""
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    on:error={(event) => ((event.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+                  />
+                {:else}
+                  <span class="offering-cover offering-cover-empty" aria-hidden="true"></span>
+                {/if}
+                <div class="offering-main">
                   <strong>{offering.title || offering.kind || 'Commission'}</strong>
                   <div class="offering-tags">
                     {#each (offering.tags || []).slice(0, 4) as tag}<span>{tag}</span>{/each}
@@ -112,31 +145,27 @@
       </section>
 
       <section class="section">
-        <h3>Recent works <span class="count">{works.length}</span></h3>
-        {#if works.length}
+        <h3>Artworks <span class="count">{gallery.length}</span></h3>
+        {#if gallery.length}
           <div class="work-grid">
-            {#each works as work}
-              <a href={work.source_url} target="_blank" rel="noreferrer" title={work.title || 'Work'}>
-                {#if work.thumb_url}
-                  <img
-                    src={work.thumb_url}
-                    alt={work.title || 'Work'}
-                    loading="lazy"
-                    referrerpolicy="no-referrer"
-                    on:error={(event) => ((event.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
-                  />
-                {:else}
-                  <span class="work-placeholder">{work.title || 'Work'}</span>
-                {/if}
+            {#each gallery as item}
+              <a href={item.href} target="_blank" rel="noreferrer" title={item.label}>
+                <img
+                  src={item.src}
+                  alt={item.label}
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  on:error={(event) => ((event.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+                />
               </a>
             {/each}
           </div>
         {:else}
-          <p class="empty">No works stored yet.</p>
+          <p class="empty">No artwork previews stored yet.</p>
         {/if}
       </section>
     {:else if loading}
-      <p class="empty">Loading details…</p>
+      <p class="empty">Loading detailsâ€¦</p>
     {:else}
       <p class="empty">No artist selected.</p>
     {/if}
@@ -223,19 +252,19 @@
     background: var(--panel);
   }
   .badge.site-skeb {
-    color: #7dd3fc;
+    color: #b8d8e8;
     border-color: rgba(56, 189, 248, 0.35);
   }
   .badge.site-crepe {
-    color: #f9a8d4;
+    color: #e8b8d0;
     border-color: rgba(244, 114, 182, 0.35);
   }
   .badge.nsfw {
-    color: #fca5a5;
+    color: #f0a0a0;
     border-color: rgba(248, 113, 113, 0.4);
   }
   .badge.open {
-    color: #86efac;
+    color: var(--text);
     border-color: rgba(74, 222, 128, 0.35);
   }
   .head-actions {
@@ -260,7 +289,7 @@
     font-weight: 600;
   }
   .watch.active {
-    color: #fbbf24;
+    color: #e8e6a8;
     border-color: rgba(251, 191, 36, 0.45);
   }
   .stats {
@@ -333,17 +362,31 @@
   }
   .offering {
     display: flex;
-    justify-content: space-between;
-    gap: 14px;
+    align-items: center;
+    gap: 12px;
     text-decoration: none;
     color: var(--text);
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 11px;
-    padding: 12px 14px;
+    padding: 10px;
   }
   .offering:hover {
     border-color: var(--border-strong);
+  }
+  .offering-cover {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: #101010;
+    flex: none;
+  }
+  .offering-cover-empty {
+    display: block;
+  }
+  .offering-main {
+    flex: 1;
+    min-width: 0;
   }
   .offering-tags {
     display: flex;
@@ -364,7 +407,7 @@
   }
   .offering-price strong {
     display: block;
-    color: #86efac;
+    color: var(--text);
     font-size: 13px;
     white-space: nowrap;
   }
@@ -423,3 +466,4 @@
     }
   }
 </style>
+

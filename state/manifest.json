@@ -1,0 +1,24 @@
+{
+  "format": "sqlite-gzip-chunks",
+  "schema_version": "1",
+  "created_at": "2026-11-15T14:16:31.866735Z",
+  "created_ts": 1794752191.866765,
+  "database": "comms.sqlite3",
+  "uncompressed_bytes": 4026368,
+  "uncompressed_sha256": "9702d40830513943dae88d5c01ac9024e7eafbd0977f4a0cdb2dacb39507c836",
+  "compressed_bytes": 1112575,
+  "compressed_sha256": "5c8c7af86cd48a8ba7725a3ab6b85a8383a4cf13895f0cb998ed6ff04963ed43",
+  "chunks": [
+    {
+      "path": "part-00000.bin",
+      "bytes": 1112575,
+      "sha256": "5c8c7af86cd48a8ba7725a3ab6b85a8383a4cf13895f0cb998ed6ff04963ed43"
+    }
+  ],
+  "counts": {
+    "artists": 831,
+    "offerings": 1701,
+    "works": 2401,
+    "price_history": 1764
+  }
+}

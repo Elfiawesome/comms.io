@@ -1,0 +1,409 @@
+{
+  "data_version": 1,
+  "schema_version": 1,
+  "format": "parquet",
+  "tables": {
+    "artists": {
+      "columns": [
+        {
+          "name": "artist_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "site",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "site_user_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "handle",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "display_name",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "profile_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "avatar_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "header_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "bio",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "list<item: string>",
+          "nullable": true
+        },
+        {
+          "name": "nsfw",
+          "type": "bool",
+          "nullable": true
+        },
+        {
+          "name": "accepts_commissions",
+          "type": "bool",
+          "nullable": true
+        },
+        {
+          "name": "works_count",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "followers_count",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "rating",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "offerings_count",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "price_min_usd",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "price_max_usd",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "price_min_jpy",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "price_max_jpy",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "latest_thumbnails",
+          "type": "list<item: string>",
+          "nullable": true
+        },
+        {
+          "name": "first_seen",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "last_updated",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "last_seen",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "search_text",
+          "type": "string",
+          "nullable": true
+        }
+      ]
+    },
+    "offerings": {
+      "columns": [
+        {
+          "name": "offering_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "artist_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "site",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "handle",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "price_min",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "price_max",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "price_usd",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "price_min_usd",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "price_max_usd",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "cover_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "turnaround_days",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "slots",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "available",
+          "type": "bool",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "list<item: string>",
+          "nullable": true
+        },
+        {
+          "name": "source_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "first_seen",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "last_updated",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "nullable": true
+        },
+        {
+          "name": "search_text",
+          "type": "string",
+          "nullable": true
+        }
+      ]
+    },
+    "works": {
+      "columns": [
+        {
+          "name": "work_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "artist_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "site",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "handle",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "thumb_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "image_urls",
+          "type": "list<item: string>",
+          "nullable": true
+        },
+        {
+          "name": "tags",
+          "type": "list<item: string>",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "source_url",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "first_seen",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "last_updated",
+          "type": "double",
+          "nullable": true
+        }
+      ]
+    },
+    "price_history": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "offering_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "artist_id",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "amount",
+          "type": "int64",
+          "nullable": true
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "nullable": true
+        },
+        {
+          "name": "amount_usd",
+          "type": "double",
+          "nullable": true
+        },
+        {
+          "name": "observed_at",
+          "type": "double",
+          "nullable": true
+        }
+      ]
+    }
+  },
+  "query_hints": {
+    "artists": {
+      "list_columns": [
+        "artist_id",
+        "site",
+        "handle",
+        "display_name",
+        "avatar_url",
+        "tags",
+        "nsfw",
+        "works_count",
+        "offerings_count",
+        "price_min_usd",
+        "price_max_usd",
+        "last_updated"
+      ],
+      "search_column": "search_text",
+      "sort_columns": {
+        "price": [
+          "price_min_usd",
+          "price_max_usd"
+        ],
+        "updated": "last_updated",
+        "works": "works_count",
+        "name": "handle"
+      }
+    },
+    "offerings": {
+      "list_columns": [
+        "offering_id",
+        "artist_id",
+        "site",
+        "handle",
+        "title",
+        "kind",
+        "price_min",
+        "price_max",
+        "currency",
+        "price_min_usd",
+        "price_max_usd",
+        "available",
+        "tags"
+      ],
+      "search_column": "search_text"
+    }
+  }
+}

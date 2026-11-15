@@ -61,6 +61,7 @@ class TwitterConfig(ConfigBase):
     gallery_dl_config: str = "config/gallery-dl.example.json"
     gallery_dl_url: str = "https://x.com/search?q=skeb&f=live"
     gallery_dl_sleep: float = 3.0
+    cookies_file: str = "cookies.txt"
 
 
 class SourcesConfig(ConfigBase):

@@ -57,6 +57,8 @@ run_gallery_dl = false
 gallery_dl_config = "config/gallery-dl.example.json"
 gallery_dl_url = "https://x.com/search?q=skeb&f=live"
 gallery_dl_sleep = 3.0
+# Optional Netscape-format cookies exported from a logged-in browser.
+cookies_file = "cookies.txt"
 
 [export]
 format = "parquet"

@@ -148,7 +148,11 @@ def run_gallery_dl(config: TwitterConfig, *, workspace: Path) -> Path:
     config_path = Path(config.gallery_dl_config)
     if not config_path.exists():
         raise FileNotFoundError(f"gallery-dl config not found: {config_path}")
-    command = ["gallery-dl", "-c", str(config_path.resolve()), config.gallery_dl_url]
+    command = ["gallery-dl", "-c", str(config_path.resolve())]
+    cookies_path = Path(config.cookies_file)
+    if cookies_path.exists():
+        command.extend(["-C", str(cookies_path.resolve())])
+    command.append(config.gallery_dl_url)
     log.info("Running gallery-dl: %s", " ".join(command))
     proc = subprocess.run(
         command,

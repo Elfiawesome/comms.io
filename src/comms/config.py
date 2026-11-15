@@ -106,7 +106,8 @@ class PublishConfig(ConfigBase):
     branch: str = "data"
     remote: str = "origin"
     squash: bool = True
-    backup_dir: str = "work/data-backups"
+    # Optional local tar.gz backup. Empty disables it (recommended on Colab).
+    backup_dir: str = ""
     repo: str = "Elfiawesome/comms.io"
     # The site reads the data branch through raw.githubusercontent.com, so data
     # publishes do not need a Pages rebuild. Set true only if you deliberately

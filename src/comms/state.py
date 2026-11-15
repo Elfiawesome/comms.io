@@ -91,6 +91,7 @@ def pack_state(
             json.dumps(manifest, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        compressed.unlink(missing_ok=True)
         if target.exists():
             shutil.rmtree(target)
         temp_dir.rename(target)

@@ -95,7 +95,8 @@ remote = "origin"
 # The data branch is a generated artifact. Default is a single squashed commit.
 squash = true
 # Optional: keep a local tarball backup before replacing the data branch.
-backup_dir = "work/data-backups"
+# Leave empty on Colab to avoid writing a large temporary archive.
+backup_dir = ""
 # The website reads raw.githubusercontent.com, so data updates do not need a
 # Pages deploy. Enable this only if you switch the site to same-origin data.
 repo = "Elfiawesome/comms.io"

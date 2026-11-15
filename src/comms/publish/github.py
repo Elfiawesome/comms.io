@@ -63,30 +63,32 @@ class GitPublisher:
         temp = Path(tempfile.mkdtemp(prefix="comms-publish-"))
         try:
             branch = self.config.publish.branch
-            clone = _run(
-                [
-                    "git",
-                    "clone",
-                    "--depth",
-                    "1",
-                    "--single-branch",
-                    "--branch",
-                    branch,
-                    remote_url,
-                    str(temp),
-                ],
-                env=env,
-                check=False,
-            )
-            if clone.returncode != 0:
-                log.info("Remote branch %s not found yet; creating an orphan branch", branch)
+            if self.config.publish.squash:
+                # Do not download the previous snapshot just to replace it.
                 _run(["git", "init", str(temp)])
                 _run(["git", "-C", str(temp), "remote", "add", "origin", remote_url])
                 _run(["git", "-C", str(temp), "checkout", "--orphan", branch])
-
-            if self.config.publish.squash:
-                snapshot_branch = f"{branch}-snapshot"
-                _run(["git", "-C", str(temp), "checkout", "--orphan", snapshot_branch])
+            else:
+                clone = _run(
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "--single-branch",
+                        "--branch",
+                        branch,
+                        remote_url,
+                        str(temp),
+                    ],
+                    env=env,
+                    check=False,
+                )
+                if clone.returncode != 0:
+                    log.info("Remote branch %s not found yet; creating an orphan branch", branch)
+                    _run(["git", "init", str(temp)])
+                    _run(["git", "-C", str(temp), "remote", "add", "origin", remote_url])
+                    _run(["git", "-C", str(temp), "checkout", "--orphan", branch])
 
             # Always replace the full tree: stale shards must not survive an update.
             _clear_worktree(temp)
@@ -119,7 +121,6 @@ class GitPublisher:
                 env=env,
             )
             if self.config.publish.squash:
-                _run(["git", "-C", str(temp), "branch", "-M", branch])
                 _run(["git", "-C", str(temp), "push", "--force", "origin", branch], env=env)
             else:
                 _run(["git", "-C", str(temp), "push", "origin", branch], env=env)

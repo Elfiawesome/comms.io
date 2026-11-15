@@ -26,6 +26,14 @@ def test_load_markdown_album(tmp_path: Path) -> None:
     assert seeds[0].handle == "artist_one"
 
 
+def test_load_seed_url(tmp_path: Path) -> None:
+    path = tmp_path / "remote-album.md"
+    path.write_text("# https://skeb.jp/@url_artist\n", encoding="utf-8")
+    seeds = load_seed_file(path.as_uri())
+    assert seeds[0].site == "skeb"
+    assert seeds[0].handle == "url_artist"
+
+
 def test_load_csv(tmp_path: Path) -> None:
     path = tmp_path / "users.csv"
     path.write_text("skeb_handle,crepe_handle\nskeb_user,crepe_user\n", encoding="utf-8")

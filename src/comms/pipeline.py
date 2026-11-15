@@ -73,6 +73,7 @@ class Pipeline:
         stats = RunStats(site=site)
         source = create_source(site, self.config)
         ctx = SourceContext(config=self.config, store=self.store, budget=budget)
+        start_requests = budget.requests
 
         log.info(
             "Starting %s source (discover=%s refresh=%s limit=%s)", site, discover, refresh, limit
@@ -121,11 +122,10 @@ class Pipeline:
                     log.warning("Discovery failed for %s: %s", site, exc)
 
             self.store.conn.commit()
-            stats.requests = budget.requests
             await self._process_frontier(source, ctx, site, stats, limit, budget)
         finally:
             await source.close()
-            stats.requests = budget.requests
+            stats.requests = max(0, budget.requests - start_requests)
             stats.finished_at = now_ts()
             self._log_stats(stats)
         return stats

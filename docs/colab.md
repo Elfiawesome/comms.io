@@ -9,13 +9,16 @@
 
 The notebook:
 
-- clones/updates the repo in `/content/comms.io`
+- clones `master` into `/content/comms.io`
+- sparse-clones only `state/` from the `data` branch into `/content/data`
 - creates a local venv and installs the package
-- runs `comms state unpack`, which downloads the chunked SQLite snapshot from
-  the `data` branch through raw.githubusercontent.com
+- runs `comms state unpack` against the local sparse data clone
 - crawls with conservative budgets, updates SQLite in `/content`, exports
   Parquet, packs the new state snapshot, validates, and publishes `data`
 - does **not** mount Google Drive; every run can use a fresh Colab VM
+
+`RUN_MODE` supports `daily`, `refresh`, `seeds`, `gallery-dl`, and `status`.
+`SEED_FILE` accepts a local path or an `https://`/raw GitHub URL.
 
 Data updates appear on the website immediately because the frontend reads the
 `data` branch through raw.githubusercontent.com. A Pages redeploy is only

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import re
 import subprocess
+import urllib.request
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from comms.config import TwitterConfig
 from comms.ids import normalize_handle
@@ -88,6 +91,9 @@ def extract_seeds_from_text(
 def load_seed_file(
     path: str | Path, *, default_site: str | None = None, priority: int = 0
 ) -> list[Seed]:
+    value = str(path)
+    if value.startswith(("http://", "https://", "file://")):
+        return load_seed_url(value, default_site=default_site, priority=priority)
     file_path = Path(path)
     if not file_path.exists():
         raise FileNotFoundError(file_path)
@@ -120,6 +126,35 @@ def load_seed_file(
         )
     return extract_seeds_from_text(
         file_path.read_text(encoding="utf-8"),
+        default_site=default_site,
+        source=source,
+        priority=priority,
+    )
+
+
+def load_seed_url(url: str, *, default_site: str | None = None, priority: int = 0) -> list[Seed]:
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "comms.io/0.1 (+https://github.com/Elfiawesome/comms.io)"},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        text = response.read().decode("utf-8", errors="replace")
+    parsed = urlparse(url)
+    source = f"url:{parsed.netloc}{parsed.path}"
+    suffix = Path(parsed.path).suffix.lower()
+    if suffix == ".json":
+        return _seeds_from_json(
+            json.loads(text),
+            source=source,
+            priority=priority,
+            default_site=default_site,
+        )
+    if suffix == ".csv":
+        return _seeds_from_csv_text(
+            text, source=source, priority=priority, default_site=default_site
+        )
+    return extract_seeds_from_text(
+        text,
         default_site=default_site,
         source=source,
         priority=priority,
@@ -274,51 +309,65 @@ def _seeds_from_csv(
     priority: int,
     default_site: str | None,
 ) -> list[Seed]:
-    seeds: list[Seed] = []
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        if not reader.fieldnames:
-            return seeds
-        for row in reader:
-            for key, value in row.items():
-                if not value:
-                    continue
-                key_lower = (key or "").lower()
-                if key_lower in {"skeb_handle", "skeb"}:
-                    seeds.append(
-                        Seed(
-                            site="skeb",
-                            handle=normalize_handle(value),
-                            source=source,
-                            priority=priority,
-                        )
+        return _seeds_from_csv_text(
+            handle.read(),
+            source=source,
+            priority=priority,
+            default_site=default_site,
+        )
+
+
+def _seeds_from_csv_text(
+    text: str,
+    *,
+    source: str,
+    priority: int,
+    default_site: str | None,
+) -> list[Seed]:
+    seeds: list[Seed] = []
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        return seeds
+    for row in reader:
+        for key, value in row.items():
+            if not value:
+                continue
+            key_lower = (key or "").lower()
+            if key_lower in {"skeb_handle", "skeb"}:
+                seeds.append(
+                    Seed(
+                        site="skeb",
+                        handle=normalize_handle(value),
+                        source=source,
+                        priority=priority,
                     )
-                elif key_lower in {"crepe_handle", "crepe"}:
-                    seeds.append(
-                        Seed(
-                            site="crepe",
-                            handle=normalize_handle(value),
-                            source=source,
-                            priority=priority,
-                        )
+                )
+            elif key_lower in {"crepe_handle", "crepe"}:
+                seeds.append(
+                    Seed(
+                        site="crepe",
+                        handle=normalize_handle(value),
+                        source=source,
+                        priority=priority,
                     )
-                elif (
-                    "skeb" in key_lower
-                    and "url" in key_lower
-                    or "crepe" in key_lower
-                    and "url" in key_lower
-                    or key_lower in {"url", "profile_url"}
-                ):
-                    seeds.extend(extract_seeds_from_text(value, source=source, priority=priority))
-                elif key_lower in {"handle", "username"} and default_site:
-                    seeds.append(
-                        Seed(
-                            site=default_site,
-                            handle=normalize_handle(value),
-                            source=source,
-                            priority=priority,
-                        )
+                )
+            elif (
+                "url" in key_lower and ("skeb" in key_lower or "crepe" in key_lower)
+            ) or key_lower in {
+                "url",
+                "profile_url",
+            }:
+                seeds.extend(extract_seeds_from_text(value, source=source, priority=priority))
+            elif key_lower in {"handle", "username"} and default_site:
+                seeds.append(
+                    Seed(
+                        site=default_site,
+                        handle=normalize_handle(value),
+                        source=source,
+                        priority=priority,
                     )
+                )
     return _dedupe(seeds)
 
 

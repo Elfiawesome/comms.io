@@ -41,6 +41,7 @@ def test_pack_and_download_state(tmp_path: Path) -> None:
     assert manifest["format"] == "sqlite-gzip-chunks"
     assert manifest["counts"]["artists"] == 1
     assert (state_dir / "manifest.json").exists()
+    assert not (state_dir / "state.gz").exists()
     assert all((state_dir / chunk["path"]).exists() for chunk in manifest["chunks"])
 
     restored = tmp_path / "restored" / "comms.sqlite3"

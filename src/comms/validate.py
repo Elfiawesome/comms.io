@@ -63,16 +63,56 @@ def validate_data_dir(path: str | Path, *, max_data_mb: int = 900) -> dict[str, 
         total_bytes += table_bytes
         table_report[table_name] = {"rows": row_total, "bytes": table_bytes, "files": len(files)}
 
+    state_report = _validate_state(root)
+    if state_report:
+        total_bytes += int(state_report["compressed_bytes"])
+
     if total_bytes > max_data_mb * 1024 * 1024:
         raise ValidationError(
             f"Data directory is {total_bytes / 1024 / 1024:.1f} MB, above {max_data_mb} MB"
         )
-    return {
+    report = {
         "path": str(root),
         "bytes": total_bytes,
         "mib": round(total_bytes / 1024 / 1024, 2),
         "tables": table_report,
         "generated_at": manifest.get("generated_at"),
+        "build_id": manifest.get("build_id"),
+    }
+    if state_report:
+        report["state"] = state_report
+    return report
+
+
+def _validate_state(root: Path) -> dict[str, Any] | None:
+    state_dir = root / "state"
+    manifest_path = state_dir / "manifest.json"
+    if not manifest_path.exists():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValidationError(f"Invalid state manifest: {exc}") from exc
+    chunks = manifest.get("chunks")
+    if not isinstance(chunks, list) or not chunks:
+        raise ValidationError("State manifest has no chunks")
+    compressed_bytes = 0
+    for chunk in chunks:
+        path = state_dir / str(chunk.get("path"))
+        if not path.exists():
+            raise ValidationError(f"Missing state chunk: {path}")
+        size = path.stat().st_size
+        if size != int(chunk.get("bytes", -1)):
+            raise ValidationError(f"State chunk size mismatch: {path}")
+        compressed_bytes += size
+    if compressed_bytes != int(manifest.get("compressed_bytes", -1)):
+        raise ValidationError("State compressed byte total mismatch")
+    return {
+        "chunks": len(chunks),
+        "compressed_bytes": compressed_bytes,
+        "uncompressed_bytes": manifest.get("uncompressed_bytes"),
+        "counts": manifest.get("counts"),
+        "created_at": manifest.get("created_at"),
     }
 
 

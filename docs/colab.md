@@ -11,15 +11,17 @@ The notebook:
 
 - clones/updates the repo in `/content/comms.io`
 - creates a local venv and installs the package
-- mounts Drive and stores the SQLite checkpoint in
-  `/content/drive/MyDrive/comms.io/comms.sqlite3`
-- copies the `data` branch to a local worktree
-- runs a bounded crawl, exports Parquet, validates, and publishes
-- triggers the Pages deploy workflow after a successful data push (the token
-  needs `Actions: write`; if it does not have that, run the deploy workflow
-  manually from the Actions tab)
+- runs `comms state unpack`, which downloads the chunked SQLite snapshot from
+  the `data` branch through raw.githubusercontent.com
+- crawls with conservative budgets, updates SQLite in `/content`, exports
+  Parquet, packs the new state snapshot, validates, and publishes `data`
+- does **not** mount Google Drive; every run can use a fresh Colab VM
 
-A normal daily run should use conservative limits. If the session disconnects,
-rerun the notebook; the frontier and SQLite database resume where they stopped.
+Data updates appear on the website immediately because the frontend reads the
+`data` branch through raw.githubusercontent.com. A Pages redeploy is only
+needed when the `website` branch changes.
+
+A normal daily run should use conservative limits. If the session disconnects
+before publishing, the next run resumes from the last published state snapshot.
 
 The notebook does not store tokens in the repository or print them.

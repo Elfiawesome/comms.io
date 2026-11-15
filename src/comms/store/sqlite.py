@@ -5,7 +5,7 @@ import json
 import sqlite3
 import zlib
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any
 
@@ -23,9 +23,10 @@ TABLE_NAMES = ("artists", "offerings", "works", "price_history")
 
 
 class SQLiteStore:
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, *, save_raw_payloads: bool = False) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.save_raw_payloads = save_raw_payloads
         self.conn = sqlite3.connect(self.path, timeout=30)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode = WAL")
@@ -45,7 +46,13 @@ class SQLiteStore:
         )
         self.conn.commit()
 
+    def checkpoint(self) -> None:
+        self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        self.conn.commit()
+
     def close(self) -> None:
+        with suppress(Exception):
+            self.checkpoint()
         self.conn.close()
 
     def __enter__(self) -> SQLiteStore:
@@ -123,7 +130,7 @@ class SQLiteStore:
             for point in bundle.price_points:
                 self._record_price(conn, point)
             self._record_handle(conn, artist)
-            if bundle.raw is not None:
+            if bundle.raw is not None and self.save_raw_payloads:
                 self._save_raw(conn, artist.site, "artist", artist.handle, bundle.raw)
             conn.execute(
                 "INSERT INTO meta(key, value) VALUES('last_successful_fetch', ?) "

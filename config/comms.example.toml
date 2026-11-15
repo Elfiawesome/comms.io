@@ -76,9 +76,18 @@ artist_partitions = 8
 offering_partitions = 16
 work_partitions = 32
 price_history_partitions = 32
-# Keep the generated branch under this size. The publisher refuses to push
-# larger snapshots unless --allow-large is passed.
-max_data_mb = 900
+# The site reads the data branch through raw.githubusercontent.com. This is a
+# repository-size guard, not a GitHub Pages guard.
+max_data_mb = 4096
+
+[storage]
+# Raw source payloads are not needed for the archive and grow quickly.
+save_raw_payloads = false
+# Store a compressed, chunked snapshot of the SQLite working database in the
+# data branch under state/. Colab downloads it before crawling and republishes
+# it after exporting, so no Drive checkpoint is required.
+state_enabled = true
+state_chunk_mb = 40
 
 [publish]
 branch = "data"
@@ -87,10 +96,10 @@ remote = "origin"
 squash = true
 # Optional: keep a local tarball backup before replacing the data branch.
 backup_dir = "work/data-backups"
-# The token used by git push must also have Actions: write for this dispatch.
-# If it does not, set trigger_deploy = false and run deploy-site manually.
+# The website reads raw.githubusercontent.com, so data updates do not need a
+# Pages deploy. Enable this only if you switch the site to same-origin data.
 repo = "Elfiawesome/comms.io"
-trigger_deploy = true
+trigger_deploy = false
 deploy_workflow = "deploy-site.yml"
 deploy_ref = "master"
 

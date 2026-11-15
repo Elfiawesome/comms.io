@@ -88,7 +88,18 @@ class ExportConfig(ConfigBase):
     offering_partitions: int = 16
     work_partitions: int = 32
     price_history_partitions: int = 32
-    max_data_mb: int = 900
+    # Refuse to publish a generated snapshot above this size. The site reads
+    # the data branch through raw.githubusercontent.com, so this is a repo
+    # guard rather than a Pages guard.
+    max_data_mb: int = 4096
+
+
+class StorageConfig(ConfigBase):
+    # Raw payloads are useful for debugging but can be very large. The
+    # normalized SQLite database and Parquet exports are the real archive.
+    save_raw_payloads: bool = False
+    state_enabled: bool = True
+    state_chunk_mb: int = 40
 
 
 class PublishConfig(ConfigBase):
@@ -97,7 +108,10 @@ class PublishConfig(ConfigBase):
     squash: bool = True
     backup_dir: str = "work/data-backups"
     repo: str = "Elfiawesome/comms.io"
-    trigger_deploy: bool = True
+    # The site reads the data branch through raw.githubusercontent.com, so data
+    # publishes do not need a Pages rebuild. Set true only if you deliberately
+    # switch the site back to same-origin data.
+    trigger_deploy: bool = False
     deploy_workflow: str = "deploy-site.yml"
     deploy_ref: str = "master"
 
@@ -118,6 +132,7 @@ class AppConfig(ConfigBase):
     run: RunConfig = Field(default_factory=RunConfig)
     sources: SourcesConfig = Field(default_factory=SourcesConfig)
     export: ExportConfig = Field(default_factory=ExportConfig)
+    storage: StorageConfig = Field(default_factory=StorageConfig)
     publish: PublishConfig = Field(default_factory=PublishConfig)
     compliance: ComplianceConfig = Field(default_factory=ComplianceConfig)
     currency: CurrencyConfig = Field(default_factory=CurrencyConfig)

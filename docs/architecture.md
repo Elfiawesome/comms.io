@@ -5,7 +5,7 @@
 | Branch | Contents |
 | --- | --- |
 | `master` | Archiver app, shared schema, CLI, tests, Colab notebook, workflows |
-| `data` | Generated Parquet database + manifest (single squashed snapshot) |
+| `data` | Generated Parquet + chunked SQLite state (single squashed snapshot) |
 | `website` | Static frontend source, built into the Pages artifact |
 
 `data` is an artifact branch, not a crawl log. The publisher replaces it with
@@ -17,19 +17,23 @@ new per-artist JSON history.
 
 ```text
 Colab / GitHub Actions
+  -> download state/ chunks from the data branch (raw.githubusercontent.com)
   -> import seeds (gallery-dl JSON, markdown albums, manual CSVs)
   -> discover a bounded number of new artists
-  -> refresh due artists from SQLite frontier
+  -> refresh due artists from the restored SQLite frontier
   -> normalize into SQLite
   -> export deterministic Parquet shards
+  -> pack the SQLite database into state/ chunks
   -> validate manifest and checksums
   -> publish squashed data branch
-  -> Pages workflow rebuilds website + data
+  -> website reads the new raw Parquet immediately
 ```
 
-The frontier and SQLite database are the resumable state. If Colab disconnects,
-the next run continues from the same queue. Raw payloads are optional and are
-compressed in SQLite for debugging; they are never exported.
+The frontier and SQLite database are the resumable state. It lives in the
+`data` branch, so a fresh Colab VM or runner can resume without Drive. Raw
+source payloads are disabled by default because they can grow very large; the
+normalized SQLite database is the archive. If Colab disconnects before it
+publishes, the next run resumes from the last published state snapshot.
 
 ## Sources
 
@@ -75,12 +79,16 @@ development. The source contract is in `src/comms/sources/base.py`.
 The archive is metadata-only. Images stay at the source URLs. For 500k+ rows:
 
 - SQLite handles working state and incremental updates.
-- Parquet is columnar and compresses well; DuckDB-WASM reads only required
-  columns and row groups via HTTP range requests.
-- Tables are partitioned by a stable hash of `artist_id`, so daily changes
-  only rewrite affected shards.
+- Parquet is columnar and compresses well. The site reads it from
+  `raw.githubusercontent.com`, and DuckDB-WASM fetches the shards listed in
+  the manifest. Raw GitHub does not guarantee HTTP range reads, so keep
+  individual Parquet shards reasonably small.
+- Tables are partitioned by a stable hash of `artist_id`.
+- The SQLite database is gzip-compressed and chunked below 40 MiB per file in
+  `state/`, avoiding GitHub's 100 MiB file block.
 - The data branch is replaced as a snapshot, not appended forever.
-- Page assets must stay under GitHub Pages' 1 GB published-site and soft
-  100 GB/month bandwidth limits. If data grows beyond that, the manifest can
-  point to Cloudflare R2 or Hugging Face while the `data` branch keeps the
-  manifest and schema.
+- The Pages artifact contains only the frontend (plus a `data-config.json`
+  pointer), so the 1 GB Pages data limit does not apply.
+- GitHub repositories are not unlimited: files are capped at 100 MiB and
+  GitHub recommends staying under 1–5 GB. If the archive outgrows that, move
+  Parquet/state to R2 or Hugging Face and keep the manifest in `data`.

@@ -27,12 +27,6 @@ jobs:
           ref: website
           path: site-src
 
-      - name: Checkout data
-        uses: actions/checkout@v4
-        with:
-          ref: data
-          path: data-src
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -45,10 +39,9 @@ jobs:
           npm ci
           npm run build
 
-      - name: Add data snapshot
+      - name: Configure raw data source
         run: |
-          mkdir -p site-src/dist/data/v1
-          rsync -a --exclude=.git --exclude=.github data-src/ site-src/dist/data/v1/
+          printf '%s\n' '{"base":"https://raw.githubusercontent.com/Elfiawesome/comms.io/data/"}' > site-src/dist/data-config.json
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

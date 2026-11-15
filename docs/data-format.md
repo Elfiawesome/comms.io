@@ -3,8 +3,8 @@
 The `data` branch contains only generated files. `manifest.json` is the
 source of truth; clients must not guess file paths.
 
-The data branch root is the current version. The Pages build mounts it at
-`/data/v1/`, so the site fetches `/data/v1/manifest.json`.
+The site fetches the branch root from `raw.githubusercontent.com` and reads
+`manifest.json` from there.
 
 ```text
 manifest.json
@@ -14,6 +14,8 @@ artists/part-000.parquet ...
 offerings/part-000.parquet ...
 works/part-000.parquet ...
 price_history/part-000.parquet ...
+state/manifest.json
+state/part-00000.bin ...
 ```
 
 ## Manifest
@@ -23,6 +25,7 @@ price_history/part-000.parquet ...
   "data_version": 1,
   "schema_version": 1,
   "format": "parquet",
+  "build_id": "1794728665",
   "generated_at": "2026-11-15T00:00:00Z",
   "tables": {
     "artists": {
@@ -60,12 +63,32 @@ price_history/part-000.parquet ...
 
 The site should:
 
-1. Fetch `manifest.json`.
+1. Fetch `manifest.json` from the configured raw data base.
 2. Build explicit file URL lists from `manifest.tables.<name>.files`.
-3. Use `read_parquet([...])` with DuckDB-WASM rather than globbing a remote
+3. Append `?v=<build_id>` to each Parquet URL so a force-pushed snapshot
+   invalidates browser/CDN caches.
+4. Use `read_parquet([...])` with DuckDB-WASM rather than globbing a remote
    directory.
-4. Select only the columns needed for the current view.
-5. Use parameter binding for search and filter values.
+5. Select only the columns needed for the current view.
+6. Use parameter binding for search and filter values.
+
+Same-origin data is still supported for local development. The production
+deploy writes `data-config.json` with:
+
+```json
+{"base":"https://raw.githubusercontent.com/Elfiawesome/comms.io/data/"}
+```
+
+A `?data=<url>` query parameter can override the data source at runtime.
+
+## State snapshot
+
+`state/manifest.json` describes a gzip-compressed SQLite database split into
+chunks smaller than 40 MiB. The Colab notebook downloads the chunks, verifies
+their checksums, joins and decompresses them, and replaces its local
+`work/comms.sqlite3`. After crawling, the exporter packs a fresh snapshot.
+Only the latest state is kept in the squashed data branch; old snapshots are
+not retained in Git history.
 
 ## Schema changes
 

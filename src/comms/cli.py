@@ -23,6 +23,12 @@ from comms.seeds import (
     run_gallery_dl,
     scan_gallery_dl_bio_links,
 )
+from comms.state import (
+    StateError,
+    download_state,
+    fetch_state_manifest,
+    pack_state,
+)
 from comms.store.sqlite import SQLiteStore
 from comms.validate import ValidationError, validate_data_dir
 
@@ -32,6 +38,8 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+state_app = typer.Typer(help="Manage the SQLite state snapshot stored in the data branch.")
+app.add_typer(state_app, name="state")
 log = get_logger("cli")
 
 DEFAULT_CONFIG = Path("config/comms.example.toml")
@@ -51,7 +59,10 @@ def _load(config_path: str | None, log_level: str = "INFO") -> AppConfig:
 
 
 def _open_store(config: AppConfig) -> SQLiteStore:
-    return SQLiteStore(config.database_path)
+    return SQLiteStore(
+        config.database_path,
+        save_raw_payloads=config.storage.save_raw_payloads,
+    )
 
 
 @app.command()
@@ -132,6 +143,11 @@ def crawl(
     max_runtime: float | None = typer.Option(
         None, "--max-runtime", help="Override max runtime in minutes"
     ),
+    sync_state: bool = typer.Option(
+        False,
+        "--sync-state",
+        help="Download the latest SQLite state snapshot from the data branch before crawling",
+    ),
     publish: bool = typer.Option(
         False, "--publish/--no-publish", help="Export and publish data after crawling"
     ),
@@ -144,6 +160,21 @@ def crawl(
     config = _load(config_path, log_level)
     if max_runtime is not None:
         config.run.max_runtime_minutes = max_runtime
+
+    if sync_state:
+        try:
+            state_manifest = download_state(
+                config.publish.repo,
+                config.publish.branch,
+                config.database_path,
+            )
+        except StateError as exc:
+            typer.echo(f"Could not download state: {exc}", err=True)
+            raise typer.Exit(1) from exc
+        if state_manifest:
+            typer.echo(json.dumps({"state_restored": state_manifest.get("counts", {})}, indent=2))
+        else:
+            typer.echo("No state snapshot found; starting with an empty database.")
 
     seeds: list[Seed] = []
     for file_name in files or []:
@@ -209,13 +240,16 @@ def crawl(
 def export(
     config_path: str | None = typer.Option(None, "--config", "-c"),
     data_dir: str | None = typer.Option(None, "--data-dir", help="Override export directory"),
+    state: bool = typer.Option(
+        True, "--state/--no-state", help="Include the chunked SQLite state snapshot"
+    ),
     log_level: str = typer.Option("INFO", "--log-level"),
 ) -> None:
     """Export the SQLite archive to static Parquet files."""
     config = _load(config_path, log_level)
     if data_dir:
         config.paths.export_dir = data_dir
-    _export(config)
+    _export(config, include_state=state)
 
 
 @app.command()
@@ -246,7 +280,7 @@ def publish(
 @app.command()
 def validate(
     data_dir: str | None = typer.Option(None, "--data-dir"),
-    max_data_mb: int = typer.Option(900, "--max-data-mb"),
+    max_data_mb: int = typer.Option(4096, "--max-data-mb"),
     config_path: str | None = typer.Option(None, "--config", "-c"),
     log_level: str = typer.Option("INFO", "--log-level"),
 ) -> None:
@@ -276,6 +310,84 @@ def status(
 
 
 @app.command()
+@state_app.command("pack")
+def state_pack(
+    config_path: str | None = typer.Option(None, "--config", "-c"),
+    database: str | None = typer.Option(None, "--database", help="SQLite database to snapshot"),
+    output: str | None = typer.Option(
+        None, "--output", help="State directory (default: <export>/state)"
+    ),
+    chunk_mb: int | None = typer.Option(None, "--chunk-mb"),
+    log_level: str = typer.Option("INFO", "--log-level"),
+) -> None:
+    """Compress and chunk the SQLite database into the data snapshot."""
+    config = _load(config_path, log_level)
+    db_path = Path(database) if database else config.database_path
+    target = Path(output) if output else config.export_path / "state"
+    try:
+        manifest = pack_state(
+            db_path,
+            target,
+            chunk_size_mb=chunk_mb or config.storage.state_chunk_mb,
+        )
+    except Exception as exc:
+        typer.echo(f"State pack failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(json.dumps(manifest, indent=2))
+
+
+@state_app.command("unpack")
+def state_unpack(
+    config_path: str | None = typer.Option(None, "--config", "-c"),
+    repo: str | None = typer.Option(None, "--repo", help="owner/repo"),
+    branch: str | None = typer.Option(None, "--branch"),
+    data_base: str | None = typer.Option(None, "--data-base", help="Override raw data base URL"),
+    database: str | None = typer.Option(None, "--database", help="Destination SQLite path"),
+    log_level: str = typer.Option("INFO", "--log-level"),
+) -> None:
+    """Download the latest SQLite state snapshot from the data branch."""
+    config = _load(config_path, log_level)
+    try:
+        manifest = download_state(
+            repo or config.publish.repo,
+            branch or config.publish.branch,
+            Path(database) if database else config.database_path,
+            data_base=data_base,
+        )
+    except StateError as exc:
+        typer.echo(f"State unpack failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if manifest is None:
+        typer.echo("No state snapshot found; nothing was downloaded.")
+        return
+    typer.echo(json.dumps(manifest, indent=2))
+
+
+@state_app.command("status")
+def state_status(
+    config_path: str | None = typer.Option(None, "--config", "-c"),
+    repo: str | None = typer.Option(None, "--repo"),
+    branch: str | None = typer.Option(None, "--branch"),
+    data_base: str | None = typer.Option(None, "--data-base"),
+    log_level: str = typer.Option("INFO", "--log-level"),
+) -> None:
+    """Show the remote state snapshot metadata."""
+    config = _load(config_path, log_level)
+    try:
+        manifest = fetch_state_manifest(
+            repo or config.publish.repo,
+            branch or config.publish.branch,
+            data_base=data_base,
+        )
+    except StateError as exc:
+        typer.echo(f"State status failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if manifest is None:
+        typer.echo("No remote state snapshot found.")
+        raise typer.Exit(1)
+    typer.echo(json.dumps(manifest, indent=2))
+
+
 def doctor(
     config_path: str | None = typer.Option(None, "--config", "-c"),
     log_level: str = typer.Option("INFO", "--log-level"),
@@ -294,6 +406,11 @@ def doctor(
         "sources": available_sources(),
         "gallery_dl_metadata_dir": config.sources.twitter.metadata_dir,
         "opt_out_file": config.compliance.opt_out_file,
+        "state_enabled": config.storage.state_enabled,
+        "state_chunk_mb": config.storage.state_chunk_mb,
+        "save_raw_payloads": config.storage.save_raw_payloads,
+        "publish_repo": config.publish.repo,
+        "publish_branch": config.publish.branch,
     }
     typer.echo(json.dumps(report, indent=2))
 
@@ -308,7 +425,7 @@ def _export_and_publish(config: AppConfig, *, allow_large: bool) -> None:
     typer.echo(json.dumps(result, indent=2))
 
 
-def _export(config: AppConfig) -> Path:
+def _export(config: AppConfig, *, include_state: bool = True) -> Path:
     opt_outs = load_opt_outs(config.compliance.opt_out_file)
     pairs: set[tuple[str, str]] = set()
     for site, handles in opt_outs.items():
@@ -317,12 +434,34 @@ def _export(config: AppConfig) -> Path:
     with _open_store(config) as store:
         exporter = ParquetExporter(config)
         target = exporter.export(store, opt_out_pairs=pairs)
+
+    state_report = None
+    if include_state and config.storage.state_enabled and config.database_path.exists():
+        try:
+            state_manifest = pack_state(
+                config.database_path,
+                target / "state",
+                chunk_size_mb=config.storage.state_chunk_mb,
+            )
+            state_report = {
+                "chunks": len(state_manifest["chunks"]),
+                "compressed_bytes": state_manifest["compressed_bytes"],
+                "uncompressed_bytes": state_manifest["uncompressed_bytes"],
+                "counts": state_manifest["counts"],
+            }
+        except Exception as exc:
+            typer.echo(f"State snapshot failed: {exc}", err=True)
+            raise typer.Exit(1) from exc
+
     try:
         report = validate_data_dir(target, max_data_mb=config.export.max_data_mb)
     except ValidationError as exc:
         typer.echo(f"Export validation failed: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(json.dumps({"export": str(target), "validation": report}, indent=2))
+    payload = {"export": str(target), "validation": report}
+    if state_report is not None:
+        payload["state"] = state_report
+    typer.echo(json.dumps(payload, indent=2))
     return target
 
 

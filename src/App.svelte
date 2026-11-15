@@ -9,7 +9,8 @@
     queryArtistBundle,
     queryArtists,
     queryArtistsByIds,
-    queryFacets
+    queryFacets,
+    resolveDataBase
   } from './lib/queries';
   import type {
     Artist,
@@ -96,6 +97,8 @@
     try {
       const session = await getDuckSession();
       conn = session.conn;
+      status = 'Resolving data source…';
+      await resolveDataBase();
       status = 'Loading manifest…';
       manifest = await loadManifest();
       status = 'Building facets…';

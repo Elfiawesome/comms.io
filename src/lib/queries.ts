@@ -11,16 +11,49 @@ import type {
   Work
 } from './types';
 
-const DATA_BASE = new URL('data/v1/', document.baseURI).toString();
+let DATA_BASE = ensureTrailingSlash(new URL('data/v1/', document.baseURI).toString());
+let currentBuildId = '';
+
+export async function resolveDataBase(): Promise<string> {
+  const override = new URLSearchParams(location.search).get('data');
+  if (override) {
+    DATA_BASE = ensureTrailingSlash(new URL(override, location.href).toString());
+    return DATA_BASE;
+  }
+
+  try {
+    const response = await fetch(new URL('data-config.json', document.baseURI), {
+      cache: 'no-store'
+    });
+    if (response.ok) {
+      const config = (await response.json()) as { base?: unknown };
+      if (typeof config.base === 'string' && config.base) {
+        DATA_BASE = ensureTrailingSlash(new URL(config.base, document.baseURI).toString());
+        return DATA_BASE;
+      }
+    }
+  } catch {
+    // Same-origin data is the local-development fallback.
+  }
+
+  DATA_BASE = ensureTrailingSlash(new URL('data/v1/', document.baseURI).toString());
+  return DATA_BASE;
+}
+
+export function getDataBase(): string {
+  return DATA_BASE;
+}
 
 export async function loadManifest(): Promise<Manifest> {
-  const response = await fetch(new URL('manifest.json', DATA_BASE), { cache: 'no-cache' });
+  const response = await fetch(new URL('manifest.json', DATA_BASE), { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(
-      `No data manifest found (HTTP ${response.status}). Run the archiver and publish the data branch.`
+      `No data manifest found at ${DATA_BASE} (HTTP ${response.status}). Run the archiver and publish the data branch.`
     );
   }
-  return (await response.json()) as Manifest;
+  const manifest = (await response.json()) as Manifest;
+  currentBuildId = String(manifest.build_id || manifest.generated_ts || manifest.generated_at || '');
+  return manifest;
 }
 
 export async function queryFacets(
@@ -142,8 +175,16 @@ function fromClause(manifest: Manifest, table: string): string {
   if (!files.length) {
     throw new Error(`Manifest has no files for table "${table}".`);
   }
-  const urls = files.map((file) => sqlString(new URL(file.path, DATA_BASE).toString()));
+  const version = currentBuildId ? `?v=${encodeURIComponent(currentBuildId)}` : '';
+  const urls = files.map((file) => {
+    const url = new URL(file.path, DATA_BASE).toString();
+    return sqlString(version ? `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(currentBuildId)}` : url);
+  });
   return `read_parquet([${urls.join(', ')}])`;
+}
+
+function ensureTrailingSlash(value: string): string {
+  return value.endsWith('/') ? value : `${value}/`;
 }
 
 function buildWhere(filters: ArtistFilters): { sql: string; params: (string | number)[] } {

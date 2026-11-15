@@ -26,13 +26,26 @@ npm.cmd run dev
 npm.cmd run build
 ```
 
-The GitHub Actions deploy workflow builds this branch, copies the `data` branch
-to `dist/data/v1`, and publishes the combined artifact to GitHub Pages.
+The GitHub Actions deploy workflow builds this branch and writes a
+`data-config.json` that points at:
+
+```text
+https://raw.githubusercontent.com/Elfiawesome/comms.io/data/
+```
+
+The Pages artifact contains only the frontend. The database stays in the
+`data` branch and is read directly through raw.githubusercontent.com.
 
 ## Data layout
 
-The site reads `data/v1/manifest.json`, then queries the Parquet files listed in
-the manifest with DuckDB-WASM. It never downloads the whole database.
+On boot the site resolves the data base in this order:
+
+1. `?data=<url>` query parameter
+2. `data-config.json` next to the deployed site
+3. same-origin `data/v1/` (local development fallback)
+
+It then reads `manifest.json` and queries the Parquet files listed in it with
+DuckDB-WASM. Parquet URLs are cache-busted with the manifest `build_id`.
 
 ## Watchlists and lists
 

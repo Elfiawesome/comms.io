@@ -17,7 +17,9 @@ export interface Manifest {
   data_version: number;
   schema_version: number;
   format: string;
+  build_id?: string;
   generated_at: string;
+  generated_ts?: number;
   tables: Record<string, ManifestTable>;
   counts: Record<string, number>;
   currency: Record<string, number>;

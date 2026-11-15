@@ -1,0 +1,46 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+build/
+.npm/
+.vite/
+
+# Local state and generated archives
+archive/
+work/
+.local/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Secrets and local config
+.env
+.env.*
+cookies.txt
+config/comms.toml
+config/opt-out.txt
+
+# Scratch folder attached for reference; its logic is reimplemented in src/comms/sources
+getter/
+
+# Worktrees
+.worktrees/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

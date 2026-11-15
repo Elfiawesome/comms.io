@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+import pyarrow.parquet as pq
+
+from comms.exporters.schema import TABLE_SCHEMAS
+
+
+class ValidationError(RuntimeError):
+    pass
+
+
+def validate_data_dir(path: str | Path, *, max_data_mb: int = 900) -> dict[str, Any]:
+    root = Path(path)
+    manifest_path = root / "manifest.json"
+    schema_path = root / "schema.json"
+    if not manifest_path.exists():
+        raise ValidationError(f"Missing manifest: {manifest_path}")
+    if not schema_path.exists():
+        raise ValidationError(f"Missing schema: {schema_path}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    schema_doc = json.loads(schema_path.read_text(encoding="utf-8"))
+    if manifest.get("data_version") != schema_doc.get("data_version"):
+        raise ValidationError("manifest.json and schema.json data_version mismatch")
+
+    total_bytes = 0
+    table_report: dict[str, Any] = {}
+    for table_name, table_schema in TABLE_SCHEMAS.items():
+        table_info = manifest.get("tables", {}).get(table_name)
+        if not isinstance(table_info, dict):
+            raise ValidationError(f"Manifest missing table: {table_name}")
+        files = table_info.get("files", [])
+        row_total = 0
+        table_bytes = 0
+        for file_info in files:
+            relative = file_info.get("path")
+            if not relative:
+                raise ValidationError(f"File entry missing path in {table_name}")
+            file_path = root / relative
+            if not file_path.exists():
+                raise ValidationError(f"Missing data file: {file_path}")
+            actual_bytes = file_path.stat().st_size
+            if actual_bytes != file_info.get("bytes"):
+                raise ValidationError(f"Size mismatch for {file_path}")
+            digest = _sha256(file_path)
+            if digest != file_info.get("sha256"):
+                raise ValidationError(f"Checksum mismatch for {file_path}")
+            parquet = pq.ParquetFile(file_path)
+            if parquet.schema_arrow.names != table_schema.names:
+                raise ValidationError(f"Schema mismatch for {file_path}")
+            rows = parquet.metadata.num_rows
+            if rows != file_info.get("rows"):
+                raise ValidationError(f"Row count mismatch for {file_path}")
+            row_total += rows
+            table_bytes += actual_bytes
+        if row_total != table_info.get("rows"):
+            raise ValidationError(f"Table row total mismatch for {table_name}")
+        total_bytes += table_bytes
+        table_report[table_name] = {"rows": row_total, "bytes": table_bytes, "files": len(files)}
+
+    if total_bytes > max_data_mb * 1024 * 1024:
+        raise ValidationError(
+            f"Data directory is {total_bytes / 1024 / 1024:.1f} MB, above {max_data_mb} MB"
+        )
+    return {
+        "path": str(root),
+        "bytes": total_bytes,
+        "mib": round(total_bytes / 1024 / 1024, 2),
+        "tables": table_report,
+        "generated_at": manifest.get("generated_at"),
+    }
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()

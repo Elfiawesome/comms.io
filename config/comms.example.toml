@@ -1,0 +1,83 @@
+# Copy this file to config/comms.toml and edit locally. Do not commit
+# config/comms.toml if it contains cookies or tokens.
+
+[paths]
+database = "work/comms.sqlite3"
+export_dir = "dist/data/v1"
+seed_dir = "seeds"
+
+[network]
+user_agent = "comms.io/0.1 (+https://github.com/Elfiawesome/comms.io; archive research)"
+respect_robots = true
+timeout_seconds = 30
+max_retries = 3
+# Keep this low. The scrapers add their own jitter and adaptive backoff.
+requests_per_second = 1.0
+max_concurrency = 2
+
+[run]
+# Per-run hard limits; the frontier keeps progress so the next run resumes.
+max_runtime_minutes = 180
+max_requests = 2000
+max_new_artists = 500
+max_refresh_artists = 2000
+# Refresh artists whose data is older than this. 0 means every run.
+refresh_stale_hours = 20
+# Stop the pipeline after this many consecutive rate-limit responses.
+rate_limit_stop_after = 5
+
+[sources.skeb]
+enabled = true
+# Discovery uses the public listing pages. 0 disables listing discovery and
+# relies on seed files / gallery-dl imports.
+discover_pages = 2
+discover_genre = "art"
+page_size = 90
+max_works_per_artist = 0  # 0 = keep all works returned by the profile
+extract_cookie = true
+impersonate = "chrome120"
+
+[sources.crepe]
+enabled = true
+# CREPE's robots.txt allows profile pages (/@...). Do not enable search-page
+# discovery without checking the site's current rules.
+discover_homepage = true
+language = "en"
+max_offerings_per_artist = 30
+fetch_offering_details = true
+impersonate = "chrome120"
+
+[sources.twitter]
+enabled = true
+# Directory containing gallery-dl metadata JSON files. The old getter/ workflow
+# wrote these with gallery-dl and config/gallery-dl.example.json.
+metadata_dir = "work/gallery-dl"
+# Optional: run gallery-dl before importing. Requires gallery-dl on PATH.
+run_gallery_dl = false
+gallery_dl_config = "config/gallery-dl.example.json"
+gallery_dl_url = "https://x.com/search?q=skeb&f=live"
+gallery_dl_sleep = 3.0
+
+[export]
+format = "parquet"
+compression = "zstd"
+row_group_size = 50000
+artist_partitions = 8
+offering_partitions = 16
+work_partitions = 32
+price_history_partitions = 32
+# Keep the generated branch under this size. The publisher refuses to push
+# larger snapshots unless --allow-large is passed.
+max_data_mb = 900
+
+[publish]
+branch = "data"
+remote = "origin"
+# The data branch is a generated artifact. Default is a single squashed commit.
+squash = true
+# Optional: keep a local tarball backup before replacing the data branch.
+backup_dir = "work/data-backups"
+
+[compliance]
+# Optional file with one handle per line that must never be scraped or exported.
+opt_out_file = "config/opt-out.txt"

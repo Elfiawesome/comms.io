@@ -1,0 +1,18 @@
+{
+  "extractor": {
+    "twitter": {
+      "download": false,
+      "sleep": 3,
+      "text-tweets": true,
+      "directory": [],
+      "filename": "{date}-{author[name]}-{tweet_id}.json",
+      "postprocessors": [
+        {
+          "name": "metadata",
+          "event": "post",
+          "filename": "{date}-{author[name]}-{tweet_id}.json"
+        }
+      ]
+    }
+  }
+}

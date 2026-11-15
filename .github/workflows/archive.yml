@@ -1,0 +1,65 @@
+name: archive
+
+# The primary daily runner is the Colab notebook. This workflow is available for
+# manual CI refreshes and can be scheduled later if GitHub runner egress is not
+# blocked by the sources.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max artists fetched per site (0 = use config limits)"
+        required: false
+        default: "50"
+      publish:
+        description: "Publish the data branch"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Restore SQLite checkpoint
+        uses: actions/cache@v4
+        with:
+          path: work/comms.sqlite3
+          key: comms-db-${{ github.run_id }}
+          restore-keys: |
+            comms-db-
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Crawl and publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMS_DATABASE: work/comms.sqlite3
+        run: |
+          python -m comms crawl --limit "${{ inputs.limit }}" ${{ inputs.publish && '--publish' || '' }}
+
+      - name: Validate
+        run: python -m comms validate --data-dir dist/data/v1
+
+  deploy:
+    needs: archive
+    if: ${{ inputs.publish }}
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit

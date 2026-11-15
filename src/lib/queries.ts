@@ -74,9 +74,12 @@ export async function prepareViews(
       );
     });
     await conn.query(
-      `CREATE OR REPLACE VIEW ${table} AS SELECT * FROM read_parquet([${urls.join(', ')}])`
+      `CREATE OR REPLACE VIEW v_${table} AS SELECT * FROM read_parquet([${urls.join(', ')}])`
     );
   }
+  // The artist list is queried for every filter/sort/page action. Materializing
+  // this small table avoids re-reading remote Parquet metadata on every query.
+  await conn.query('CREATE OR REPLACE TABLE artists AS SELECT * FROM v_artists');
 }
 
 export async function queryFacets(
@@ -198,7 +201,7 @@ function fromClause(manifest: Manifest, table: string): string {
   if (!files.length) {
     throw new Error(`Manifest has no files for table "${table}".`);
   }
-  return table;
+  return table === 'artists' ? 'artists' : `v_${table}`;
 }
 
 function ensureTrailingSlash(value: string): string {

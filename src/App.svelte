@@ -54,6 +54,8 @@
   let status = 'Starting DuckDB…';
   let error = '';
   let loading = true;
+  let loadToken = 0;
+  let detailToken = 0;
   let artists: Artist[] = [];
   let total = 0;
   let page = 1;
@@ -120,33 +122,37 @@
 
   async function loadArtists(): Promise<void> {
     if (!conn || !manifest) return;
+    const token = ++loadToken;
     loading = true;
     error = '';
     try {
       const result = await queryArtists(conn, manifest, filters, page, pageSize);
+      if (token !== loadToken) return;
       artists = result.rows;
       total = result.total;
     } catch (err) {
-      error = errorMessage(err);
+      if (token === loadToken) error = errorMessage(err);
     } finally {
-      loading = false;
+      if (token === loadToken) loading = false;
     }
   }
 
   async function loadDetails(artistId: string): Promise<void> {
     if (!conn || !manifest) return;
+    const token = ++detailToken;
     selectedLoading = true;
     try {
       const bundle: ArtistBundle = await queryArtistBundle(conn, manifest, artistId);
+      if (token !== detailToken) return;
       selected = bundle.artist;
       selectedOfferings = bundle.offerings;
       selectedWorks = bundle.works;
       selectedPrices = bundle.priceHistory;
       error = '';
     } catch (err) {
-      error = errorMessage(err);
+      if (token === detailToken) error = errorMessage(err);
     } finally {
-      selectedLoading = false;
+      if (token === detailToken) selectedLoading = false;
     }
   }
 

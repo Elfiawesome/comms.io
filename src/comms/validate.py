@@ -47,6 +47,11 @@ def validate_data_dir(path: str | Path, *, max_data_mb: int = 900) -> dict[str, 
             actual_bytes = file_path.stat().st_size
             if actual_bytes != file_info.get("bytes"):
                 raise ValidationError(f"Size mismatch for {file_path}")
+            if actual_bytes > 95 * 1024 * 1024:
+                raise ValidationError(
+                    f"{file_path} is {actual_bytes / 1024 / 1024:.1f} MB; "
+                    "GitHub blocks files above 100 MiB. Increase the table partition count."
+                )
             digest = _sha256(file_path)
             if digest != file_info.get("sha256"):
                 raise ValidationError(f"Checksum mismatch for {file_path}")

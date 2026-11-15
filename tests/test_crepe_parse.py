@@ -1,6 +1,7 @@
 import json
 
 from comms.sources.crepe import (
+    _clean_url,
     _commission_records,
     _doc_text,
     _find_user,
@@ -61,3 +62,5 @@ def test_parse_vike_page() -> None:
     assert len(commissions) == 1
     assert _tag_names(records, commissions[0]) == ["Illustration"]
     assert _doc_text(user["bio"]) == "hello"
+    assert _clean_url("https:\\/\\/crepe.land\\/image.png") == "https://crepe.land/image.png"
+    assert _clean_url(None) is None

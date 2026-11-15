@@ -279,8 +279,7 @@ class SkebSource(Source):
                     works[work.work_id] = work
 
         existing = ctx.store.existing_work_ids(aid)
-        expected = _optional_int(profile.get("received_works_count"))
-        needs_backfill = expected is not None and len(existing) < expected
+        force_full = self.options.force_full_works
         offset = 0
         page = 0
         page_size = max(1, self.options.work_page_size)
@@ -301,7 +300,7 @@ class SkebSource(Source):
                     if work.work_id not in existing:
                         new_in_page += 1
                     works.setdefault(work.work_id, work)
-                if existing and new_in_page == 0 and not needs_backfill:
+                if existing and new_in_page == 0 and not force_full:
                     break
                 if self.options.max_work_pages > 0 and page >= self.options.max_work_pages:
                     break
@@ -325,6 +324,8 @@ def _parse_work(site: str, aid: str, handle: str, item: Any, now: float) -> Work
         return None
     path = str(item.get("path") or "")
     match = WORK_PATH_RE.search(path)
+    if match and normalize_handle(match.group(1)).casefold() != normalize_handle(handle).casefold():
+        return None
     site_work_id = match.group(2) if match else None
     if not site_work_id:
         site_work_id = (

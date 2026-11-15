@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import zlib
 from collections.abc import Iterator
@@ -114,6 +115,30 @@ class SQLiteStore:
             "SELECT work_id FROM works WHERE artist_id = ?", (artist_id,)
         ).fetchall()
         return {str(row["work_id"]) for row in rows}
+
+    def prune_mismatched_source_works(self) -> int:
+        """Remove works whose source URL belongs to a different artist."""
+        pattern = re.compile(r"skeb\.jp/@([^/]+)/works/\d+", re.IGNORECASE)
+        rows = self.conn.execute(
+            """
+            SELECT w.work_id, w.source_url, a.handle
+            FROM works w
+            JOIN artists a ON a.artist_id = w.artist_id
+            WHERE w.site = 'skeb'
+            """
+        ).fetchall()
+        bad: list[str] = []
+        for row in rows:
+            match = pattern.search(str(row["source_url"] or ""))
+            if match and match.group(1).casefold() != str(row["handle"]).casefold():
+                bad.append(str(row["work_id"]))
+        if bad:
+            self.conn.executemany(
+                "DELETE FROM works WHERE work_id = ?", [(work_id,) for work_id in bad]
+            )
+            self.conn.commit()
+            log.warning("Removed %s works whose source URL belongs to a different artist", len(bad))
+        return len(bad)
 
     def latest_thumbnails(self, limit: int = 4) -> dict[str, list[str]]:
         """Return up to ``limit`` artwork URLs per artist.

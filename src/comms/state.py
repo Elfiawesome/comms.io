@@ -7,7 +7,9 @@ import os
 import shutil
 import sqlite3
 import tempfile
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -170,7 +172,7 @@ def fetch_state_manifest(
 ) -> dict[str, Any] | None:
     base = _state_base(repo, branch, data_base)
     try:
-        raw = _fetch_bytes(base + MANIFEST_NAME)
+        raw = _fetch_bytes(_cache_bust(base + MANIFEST_NAME, str(time.time_ns())))
     except StateNotFound:
         return None
     try:
@@ -194,7 +196,10 @@ def download_state(
     """
     base = _state_base(repo, branch, data_base)
     try:
-        manifest_raw = _fetch_bytes(base + MANIFEST_NAME, token=token)
+        manifest_raw = _fetch_bytes(
+            _cache_bust(base + MANIFEST_NAME, str(time.time_ns())),
+            token=token,
+        )
     except StateNotFound:
         log.info("No state snapshot found at %s; starting fresh", base)
         return None
@@ -207,12 +212,13 @@ def download_state(
     if not isinstance(chunks, list) or not chunks:
         raise StateError("Remote state manifest has no chunks")
 
+    version = str(manifest.get("compressed_sha256") or manifest.get("created_ts") or "")
     temp_dir = Path(tempfile.mkdtemp(prefix="comms-download-"))
     try:
         for index, chunk in enumerate(chunks, start=1):
             path = str(chunk["path"])
             log.info("Downloading state chunk %s/%s: %s", index, len(chunks), path)
-            data = _fetch_bytes(base + path, token=token)
+            data = _fetch_bytes(_cache_bust(base + path, version), token=token)
             (temp_dir / path).write_bytes(data)
         (temp_dir / MANIFEST_NAME).write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2),
@@ -231,6 +237,13 @@ def _data_base(repo: str, branch: str, data_base: str | None) -> str:
 
 def _state_base(repo: str, branch: str, data_base: str | None) -> str:
     return _data_base(repo, branch, data_base) + "state/"
+
+
+def _cache_bust(url: str, version: str) -> str:
+    if urllib.parse.urlparse(url).scheme == "file":
+        return url
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}v={urllib.parse.quote(version, safe='')}"
 
 
 def _fetch_bytes(url: str, *, token: str | None = None) -> bytes:

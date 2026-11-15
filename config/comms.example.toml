@@ -38,6 +38,8 @@ work_page_size = 30  # Skeb caps this endpoint at 30 per request
 # 0 = fetch all pages on the first run. Later runs stop as soon as a page has
 # no new works, so the normal daily cost is one extra request per artist.
 max_work_pages = 0
+# One-time repair switch: walk every page even for artists already in SQLite.
+force_full_works = false
 extract_cookie = true
 impersonate = "chrome120"
 

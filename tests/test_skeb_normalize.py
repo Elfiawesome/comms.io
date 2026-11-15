@@ -26,3 +26,17 @@ def test_parse_work() -> None:
     assert work.site_work_id == "12345"
     assert work.source_url == "https://skeb.jp/@alice/works/12345"
     assert work.created_at is not None
+
+
+def test_parse_work_rejects_other_artist_path() -> None:
+    work = _parse_work(
+        "skeb",
+        "artist_1",
+        "alice",
+        {
+            "path": "/@bob/works/12345",
+            "thumbnail_image_urls": {"src": "https://example.invalid/x.jpg"},
+        },
+        1.0,
+    )
+    assert work is None

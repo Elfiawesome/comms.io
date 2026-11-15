@@ -46,6 +46,8 @@ class SkebConfig(ConfigBase):
     # 0 = fetch all pages. Daily refreshes stop early once a page contains no
     # works that are not already in SQLite.
     max_work_pages: int = 0
+    # One-time repair switch: ignore the early stop and walk every works page.
+    force_full_works: bool = False
     extract_cookie: bool = True
     impersonate: str = "chrome120"
 

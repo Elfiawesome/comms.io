@@ -74,6 +74,16 @@ def test_frontier_lifecycle(tmp_path: Path) -> None:
         assert store.queued_count("skeb") == {"done": 1}
 
 
+def test_prune_mismatched_works(tmp_path: Path) -> None:
+    bundle = make_bundle()
+    bundle.works[0].source_url = "https://skeb.jp/@someone_else/works/42"
+    with SQLiteStore(tmp_path / "archive.sqlite") as store:
+        store.upsert_bundle(bundle)
+        assert store.counts()["works"] == 1
+        assert store.prune_mismatched_source_works() == 1
+        assert store.counts()["works"] == 0
+
+
 def test_stale_refresh_resets_completed_frontier(tmp_path: Path) -> None:
     bundle = make_bundle()
     bundle.artist.last_updated = 1.0

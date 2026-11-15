@@ -142,6 +142,11 @@ def crawl(
         "--refresh-all",
         help="Refresh every artist, ignoring refresh_stale_hours",
     ),
+    force_full_works: bool = typer.Option(
+        False,
+        "--force-full-works",
+        help="One-time repair: walk every Skeb works page instead of stopping early",
+    ),
     limit: int = typer.Option(
         0, "--limit", help="Max artists fetched per site (0 = until frontier empty)"
     ),
@@ -167,6 +172,8 @@ def crawl(
         config.run.max_runtime_minutes = max_runtime
     if refresh_all:
         config.run.refresh_stale_hours = 0.0
+    if force_full_works:
+        config.sources.skeb.force_full_works = True
 
     if sync_state:
         try:
@@ -439,6 +446,9 @@ def _export(config: AppConfig, *, include_state: bool = True) -> Path:
         for handle in handles:
             pairs.add((site, handle))
     with _open_store(config) as store:
+        pruned = store.prune_mismatched_source_works()
+        if pruned:
+            typer.echo(f"Removed {pruned} mismatched source works before export.")
         exporter = ParquetExporter(config)
         target = exporter.export(store, opt_out_pairs=pairs)
 

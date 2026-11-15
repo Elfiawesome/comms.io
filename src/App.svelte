@@ -24,8 +24,12 @@
   } from './lib/types';
   import { fmtDate, priceRange, siteLabel } from './lib/format';
   import {
+    listNames,
+    loadLists,
     loadWatchlist,
     mergeWatchlist,
+    moveWatchlistEntry,
+    saveLists,
     saveWatchlist,
     toggleWatchlist,
     watchEntryFromArtist,
@@ -58,6 +62,8 @@
   let viewMode: 'browse' | 'watchlist' = 'browse';
   let watchlist: WatchEntry[] = [];
   let watchIds = new Set<string>();
+  let customLists: string[] = [];
+  let activeList = 'Watchlist';
   let drawerOpen = false;
   let selected: Artist | null = null;
   let selectedOfferings: Offering[] = [];
@@ -72,6 +78,9 @@
     : Array.from(new Set(artists.map((artist) => artist.site))).map((value) => ({ value, count: 0 }));
   $: tagOptions = tags;
   $: manifestDate = manifest ? fmtDate(Date.parse(manifest.generated_at) / 1000) : '—';
+  $: listOptions = listNames(watchlist, customLists);
+  $: visibleWatchlist =
+    activeList === 'All' ? watchlist : watchlist.filter((entry) => (entry.list || 'Watchlist') === activeList);
 
   onMount(() => {
     window.addEventListener('hashchange', handleHash);
@@ -81,6 +90,7 @@
 
   async function init(): Promise<void> {
     watchlist = loadWatchlist();
+    customLists = loadLists();
     watchIds = new Set(watchlist.map((entry) => entry.artist_id));
     readUrl();
     try {
@@ -226,7 +236,8 @@
   }
 
   function toggleWatch(artist: Artist): void {
-    watchlist = toggleWatchlist(watchlist, artist);
+    const targetList = activeList === 'All' ? 'Watchlist' : activeList;
+    watchlist = toggleWatchlist(watchlist, artist, targetList);
     saveWatchlist(watchlist);
     watchIds = new Set(watchlist.map((entry) => entry.artist_id));
   }
@@ -235,6 +246,21 @@
     watchlist = watchlist.filter((item) => item.artist_id !== entry.artist_id);
     saveWatchlist(watchlist);
     watchIds = new Set(watchlist.map((item) => item.artist_id));
+  }
+
+  function moveWatch(entry: WatchEntry, list: string): void {
+    watchlist = moveWatchlistEntry(watchlist, entry.artist_id, list);
+    saveWatchlist(watchlist);
+  }
+
+  function createList(): void {
+    const name = window.prompt('New list name', 'Favorites')?.trim();
+    if (!name) return;
+    if (!listOptions.includes(name)) {
+      customLists = [...customLists, name];
+      saveLists(customLists);
+    }
+    activeList = name;
   }
 
   function openWatchEntry(entry: WatchEntry): void {
@@ -265,7 +291,11 @@
       watchlist = watchlist.map((entry) => {
         const fresh = byId.get(entry.artist_id);
         return fresh
-          ? { ...watchEntryFromArtist(fresh), added_at: entry.added_at, note: entry.note }
+          ? {
+              ...watchEntryFromArtist(fresh, entry.list || 'Watchlist'),
+              added_at: entry.added_at,
+              note: entry.note
+            }
           : entry;
       });
       saveWatchlist(watchlist);
@@ -457,10 +487,17 @@
   {:else}
     <section class="watchlist-head">
       <div>
-        <h2>Watchlist</h2>
-        <p>Stored locally in this browser. Export it as JSON to move it anywhere.</p>
+        <h2>Lists &amp; watchlist</h2>
+        <p>Stored locally in this browser. Create named lists for different moods, then export everything as JSON.</p>
       </div>
       <div class="actions">
+        <select class="list-filter" bind:value={activeList} aria-label="Filter by list">
+          <option value="All">All lists ({watchlist.length})</option>
+          {#each listOptions as list}
+            <option value={list}>{list} ({watchlist.filter((entry) => (entry.list || 'Watchlist') === list).length})</option>
+          {/each}
+        </select>
+        <button class="ghost" on:click={createList}>New list</button>
         <button class="ghost" on:click={() => void refreshWatchlist()} disabled={!watchlist.length}>Refresh prices</button>
         <button class="ghost" on:click={exportWatchlist} disabled={!watchlist.length}>Export JSON</button>
         <button class="ghost" on:click={openImport}>Import JSON</button>
@@ -468,9 +505,9 @@
       </div>
     </section>
 
-    {#if watchlist.length}
+    {#if visibleWatchlist.length}
       <div class="watch-grid">
-        {#each watchlist as entry (entry.artist_id)}
+        {#each visibleWatchlist as entry (entry.artist_id)}
           <article class="watch-card">
             <button class="watch-main" on:click={() => openWatchEntry(entry)}>
               {#if entry.avatar_url}
@@ -491,14 +528,25 @@
                 <span class="meta">Added {fmtDate(entry.added_at)}</span>
               </span>
             </button>
+            <select
+              class="list-select"
+              value={entry.list || 'Watchlist'}
+              aria-label="Move to list"
+              on:click|stopPropagation
+              on:change={(event) => moveWatch(entry, (event.currentTarget as HTMLSelectElement).value)}
+            >
+              {#each listOptions as list}
+                <option value={list}>{list}</option>
+              {/each}
+            </select>
             <button class="remove" aria-label="Remove from watchlist" on:click={() => removeWatch(entry)}>×</button>
           </article>
         {/each}
       </div>
     {:else}
       <div class="empty-panel">
-        <strong>No watched artists yet.</strong>
-        Browse the archive and press the star next to an artist. Watchlists stay in this browser until you export them.
+        <strong>{activeList === 'All' ? 'No watched artists yet.' : `“${activeList}” is empty.`}</strong>
+        Browse the archive and press the star next to an artist. Use the list selector on a saved card to move it between lists.
       </div>
     {/if}
   {/if}

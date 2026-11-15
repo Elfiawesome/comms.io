@@ -11,9 +11,12 @@ export interface WatchEntry {
   price_max_usd?: number | null;
   added_at: number;
   note?: string;
+  list?: string;
 }
 
 const STORAGE_KEY = 'comms.watchlist.v1';
+const LISTS_KEY = 'comms.watchlists.v1';
+const DEFAULT_LIST = 'Watchlist';
 
 export function loadWatchlist(): WatchEntry[] {
   try {
@@ -35,7 +38,26 @@ export function saveWatchlist(entries: WatchEntry[]): void {
   }
 }
 
-export function watchEntryFromArtist(artist: Artist): WatchEntry {
+export function loadLists(): string[] {
+  try {
+    const raw = localStorage.getItem(LISTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((name) => typeof name === 'string' && name.trim()) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLists(lists: string[]): void {
+  try {
+    localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export function watchEntryFromArtist(artist: Artist, list = DEFAULT_LIST): WatchEntry {
   return {
     artist_id: artist.artist_id,
     site: artist.site,
@@ -45,16 +67,29 @@ export function watchEntryFromArtist(artist: Artist): WatchEntry {
     tags: artist.tags,
     price_min_usd: artist.price_min_usd === null || artist.price_min_usd === undefined ? null : Number(artist.price_min_usd),
     price_max_usd: artist.price_max_usd === null || artist.price_max_usd === undefined ? null : Number(artist.price_max_usd),
-    added_at: Date.now() / 1000
+    added_at: Date.now() / 1000,
+    list
   };
 }
 
-export function toggleWatchlist(entries: WatchEntry[], artist: Artist): WatchEntry[] {
+export function toggleWatchlist(entries: WatchEntry[], artist: Artist, list = DEFAULT_LIST): WatchEntry[] {
   const exists = entries.some((entry) => entry.artist_id === artist.artist_id);
   if (exists) {
     return entries.filter((entry) => entry.artist_id !== artist.artist_id);
   }
-  return [watchEntryFromArtist(artist), ...entries];
+  return [watchEntryFromArtist(artist, list), ...entries];
+}
+
+export function moveWatchlistEntry(entries: WatchEntry[], artistId: string, list: string): WatchEntry[] {
+  return entries.map((entry) => (entry.artist_id === artistId ? { ...entry, list } : entry));
+}
+
+export function listNames(entries: WatchEntry[], extra: string[] = []): string[] {
+  const names = new Set<string>([DEFAULT_LIST, ...extra]);
+  for (const entry of entries) {
+    names.add(entry.list?.trim() || DEFAULT_LIST);
+  }
+  return [...names].sort((a, b) => (a === DEFAULT_LIST ? -1 : b === DEFAULT_LIST ? 1 : a.localeCompare(b)));
 }
 
 export function mergeWatchlist(entries: WatchEntry[], incoming: WatchEntry[]): WatchEntry[] {
@@ -62,7 +97,8 @@ export function mergeWatchlist(entries: WatchEntry[], incoming: WatchEntry[]): W
   for (const entry of [...entries, ...incoming]) {
     if (!entry || !entry.artist_id) continue;
     const existing = merged.get(entry.artist_id);
-    merged.set(entry.artist_id, existing ? { ...existing, ...entry } : entry);
+    const normalized = { ...entry, list: entry.list?.trim() || DEFAULT_LIST };
+    merged.set(entry.artist_id, existing ? { ...existing, ...normalized } : normalized);
   }
   return [...merged.values()];
 }

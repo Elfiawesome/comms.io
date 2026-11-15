@@ -34,8 +34,9 @@ to `dist/data/v1`, and publishes the combined artifact to GitHub Pages.
 The site reads `data/v1/manifest.json`, then queries the Parquet files listed in
 the manifest with DuckDB-WASM. It never downloads the whole database.
 
-## Watchlists
+## Watchlists and lists
 
-Watchlists are local-first and stored in `localStorage`. Use the export/import
-buttons to move them between browsers. Public curated albums will be compiled
-from static files in a later step.
+Watchlists are local-first and stored in `localStorage`. You can create named
+lists (for example `Favorites`, `Historical`, `Gift ideas`), move saved artists
+between them, and export/import the whole collection as JSON. Public curated
+albums can be compiled from static files in a later step.

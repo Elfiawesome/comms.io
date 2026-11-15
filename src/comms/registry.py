@@ -29,10 +29,7 @@ def _load_builtins() -> None:
     for module_name in ("comms.sources.skeb", "comms.sources.crepe"):
         importlib.import_module(module_name)
 
-    try:
-        entry_points = metadata.entry_points(group="comms.sources")
-    except TypeError:  # pragma: no cover - Python 3.10 fallback
-        entry_points = metadata.entry_points().get("comms.sources", [])  # type: ignore[attr-defined]
+    entry_points = metadata.entry_points(group="comms.sources")
     for entry_point in entry_points:
         try:
             entry_point.load()

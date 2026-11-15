@@ -191,15 +191,15 @@ def crawl(
         metadata_dirs.append(Path(gallery_dl_dir))
     if config.sources.twitter.enabled and Path(config.sources.twitter.metadata_dir).exists():
         metadata_dirs.append(Path(config.sources.twitter.metadata_dir))
-    for directory in dict.fromkeys(metadata_dirs):
-        seeds.extend(import_gallery_dl_metadata(directory))
+    for metadata_dir in dict.fromkeys(metadata_dirs):
+        seeds.extend(import_gallery_dl_metadata(metadata_dir))
 
     if config.sources.twitter.follow_bio_links and metadata_dirs:
         bio_links: list[str] = []
-        for directory in dict.fromkeys(metadata_dirs):
+        for metadata_dir in dict.fromkeys(metadata_dirs):
             bio_links.extend(
                 scan_gallery_dl_bio_links(
-                    directory,
+                    metadata_dir,
                     limit=config.sources.twitter.max_bio_links,
                 )
             )

@@ -72,10 +72,15 @@ def extract_seeds_from_text(
     if default_site:
         for line in text.splitlines():
             line = line.strip().strip(",;")
-            match = PLAIN_HANDLE_RE.match(line)
-            if match:
+            plain_match = PLAIN_HANDLE_RE.match(line)
+            if plain_match:
                 seeds.append(
-                    Seed(site=default_site, handle=match.group(1), source=source, priority=priority)
+                    Seed(
+                        site=default_site,
+                        handle=plain_match.group(1),
+                        source=source,
+                        priority=priority,
+                    )
                 )
     return _dedupe(seeds)
 
@@ -242,13 +247,13 @@ def _seeds_from_json(
         author = data.get("author")
         if isinstance(author, dict):
             for key in ("description", "bio", "url", "name"):
-                value = author.get(key)
-                if isinstance(value, str):
-                    texts.append(value)
+                raw_value = author.get(key)
+                if isinstance(raw_value, str):
+                    texts.append(raw_value)
         for key in ("content", "description", "full_text", "text"):
-            value = data.get(key)
-            if isinstance(value, str):
-                texts.append(value)
+            raw_value = data.get(key)
+            if isinstance(raw_value, str):
+                texts.append(raw_value)
     seeds: list[Seed] = []
     for text in texts:
         seeds.extend(

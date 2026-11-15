@@ -102,7 +102,9 @@ def seed(
         raise typer.Exit(1)
     with _open_store(config) as store:
         for item in _dedupe_seeds(seeds):
-            store.enqueue(item.site, item.handle, priority=item.priority, source=item.source)
+            store.enqueue(
+                item.site, item.handle, priority=item.priority, source=item.source, reset=True
+            )
         store.conn.commit()
         typer.echo(f"Queued {len(_dedupe_seeds(seeds))} seed(s).")
         typer.echo(json.dumps(store.queued_count(), indent=2))

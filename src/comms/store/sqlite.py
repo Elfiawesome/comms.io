@@ -348,9 +348,25 @@ class SQLiteStore:
         priority: int = 0,
         source: str = "manual",
         next_run_at: float = 0.0,
+        reset: bool = False,
     ) -> None:
         handle = normalize_handle(handle)
         if not handle:
+            return
+        if reset:
+            self.conn.execute(
+                """
+                INSERT INTO frontier(site, handle, priority, source, status, next_run_at)
+                VALUES (?, ?, ?, ?, 'pending', ?)
+                ON CONFLICT(site, handle) DO UPDATE SET
+                    priority = MAX(frontier.priority, excluded.priority),
+                    source = COALESCE(excluded.source, frontier.source),
+                    status = 'pending',
+                    next_run_at = 0,
+                    last_error = NULL
+                """,
+                (site, handle, priority, source, next_run_at),
+            )
             return
         self.conn.execute(
             """

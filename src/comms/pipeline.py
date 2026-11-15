@@ -91,7 +91,7 @@ class Pipeline:
             for seed in seeds:
                 if self._is_opted_out(site, seed.handle):
                     continue
-                self.store.enqueue(site, seed.handle, priority=100, source=seed.source)
+                self.store.enqueue(site, seed.handle, priority=100, source=seed.source, reset=True)
                 queued += 1
             stats.queued += queued
 

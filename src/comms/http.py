@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
-from urllib.robotparser import RobotFileParser
 
 import httpx
 
@@ -74,11 +74,73 @@ class Response:
         return json.loads(self.text)
 
 
+class RobotsRules:
+    """Small robots.txt parser with longest-match semantics.
+
+    Python's stdlib ``RobotFileParser`` returns the first matching group/rule in
+    file order, which is not how modern crawlers interpret robots.txt. CREPE is
+    a concrete example: it has ``Disallow: /`` followed by ``Allow: /en/@``.
+    The longest matching rule must win.
+    """
+
+    def __init__(self, text: str = "") -> None:
+        self.rules: list[tuple[bool, str, re.Pattern[str]]] = []
+        self._parse(text)
+
+    def _parse(self, text: str) -> None:
+        groups: list[tuple[list[str], list[tuple[bool, str]]]] = []
+        agents: list[str] = []
+        rules: list[tuple[bool, str]] = []
+        saw_rule = False
+        for raw_line in text.splitlines():
+            line = raw_line.split("#", 1)[0].strip()
+            if not line or ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            key = key.strip().lower()
+            value = value.strip()
+            if key == "user-agent":
+                if saw_rule:
+                    groups.append((agents, rules))
+                    agents = []
+                    rules = []
+                    saw_rule = False
+                agents.append(value.lower())
+            elif key in {"allow", "disallow"} and value:
+                saw_rule = True
+                rules.append((key == "allow", value))
+        if agents:
+            groups.append((agents, rules))
+
+        for group_agents, group_rules in groups:
+            if "*" not in group_agents and not any("comms" in agent for agent in group_agents):
+                continue
+            for allow, pattern in group_rules:
+                self.rules.append((allow, pattern, _pattern_regex(pattern)))
+
+    def can_fetch(self, url: str) -> bool:
+        if not self.rules:
+            return True
+        parsed = urlparse(url)
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
+        best_length = -1
+        best_allow = True
+        for allow, pattern, regex in self.rules:
+            if regex.match(path):
+                length = len(pattern.rstrip("$"))
+                if length > best_length or (length == best_length and allow):
+                    best_length = length
+                    best_allow = allow
+        return best_allow
+
+
 class RobotsGuard:
     def __init__(self, client: httpx.AsyncClient, enabled: bool = True) -> None:
         self.client = client
         self.enabled = enabled
-        self._cache: dict[str, RobotFileParser | None] = {}
+        self._cache: dict[str, RobotsRules | None] = {}
 
     async def allowed(self, url: str) -> bool:
         if not self.enabled:
@@ -87,14 +149,12 @@ class RobotsGuard:
         origin = f"{parsed.scheme}://{parsed.netloc}"
         if origin not in self._cache:
             self._cache[origin] = await self._load(origin)
-        parser = self._cache[origin]
-        if parser is None:
+        rules = self._cache[origin]
+        if rules is None:
             return True
-        return parser.can_fetch("*", url)
+        return rules.can_fetch(url)
 
-    async def _load(self, origin: str) -> RobotFileParser | None:
-        parser = RobotFileParser()
-        parser.set_url(f"{origin}/robots.txt")
+    async def _load(self, origin: str) -> RobotsRules | None:
         try:
             response = await self.client.get(f"{origin}/robots.txt", timeout=15)
             if response.status_code >= 400:
@@ -104,11 +164,20 @@ class RobotsGuard:
                     response.status_code,
                 )
                 return None
-            parser.parse(response.text.splitlines())
-            return parser
+            return RobotsRules(response.text)
         except Exception as exc:
             log.warning("Could not read robots.txt for %s: %s; allowing by default", origin, exc)
             return None
+
+
+def _pattern_regex(pattern: str) -> re.Pattern[str]:
+    exact = pattern.endswith("$")
+    if exact:
+        pattern = pattern[:-1]
+    regex = re.escape(pattern).replace(r"\*", ".*")
+    if exact:
+        regex += "$"
+    return re.compile(regex)
 
 
 class HttpClient:

@@ -18,6 +18,7 @@ export async function resolveDataBase(): Promise<string> {
   const override = new URLSearchParams(location.search).get('data');
   if (override) {
     DATA_BASE = ensureTrailingSlash(new URL(override, location.href).toString());
+    DATA_BASE = await resolveRawCommitBase(DATA_BASE);
     return DATA_BASE;
   }
 
@@ -29,6 +30,7 @@ export async function resolveDataBase(): Promise<string> {
       const config = (await response.json()) as { base?: unknown };
       if (typeof config.base === 'string' && config.base) {
         DATA_BASE = ensureTrailingSlash(new URL(config.base, document.baseURI).toString());
+        DATA_BASE = await resolveRawCommitBase(DATA_BASE);
         return DATA_BASE;
       }
     }
@@ -38,6 +40,61 @@ export async function resolveDataBase(): Promise<string> {
 
   DATA_BASE = ensureTrailingSlash(new URL('data/v1/', document.baseURI).toString());
   return DATA_BASE;
+}
+
+async function resolveRawCommitBase(base: string): Promise<string> {
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return base;
+  }
+  if (url.hostname !== 'raw.githubusercontent.com') return base;
+  const parts = url.pathname.split('/').filter(Boolean);
+  if (parts.length < 3) return base;
+  const repo = `${parts[0]}/${parts[1]}`;
+  const branch = parts[2];
+  const cacheKey = `comms.dataSha:${repo}:${branch}`;
+  const cached = readShaCache(cacheKey);
+  if (cached) return `https://raw.githubusercontent.com/${repo}/${cached}/`;
+
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}/commits/${encodeURIComponent(branch)}`, {
+      headers: { Accept: 'application/vnd.github+json' },
+      cache: 'no-store'
+    });
+    if (response.ok) {
+      const data = (await response.json()) as { sha?: unknown };
+      if (typeof data.sha === 'string' && data.sha) {
+        writeShaCache(cacheKey, data.sha);
+        return `https://raw.githubusercontent.com/${repo}/${data.sha}/`;
+      }
+    }
+  } catch {
+    // Fall back to the branch URL if the API is unavailable.
+  }
+  return base;
+}
+
+function readShaCache(key: string): string | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as { sha?: unknown; ts?: unknown };
+    if (typeof cached.sha !== 'string' || typeof cached.ts !== 'number') return null;
+    if (Date.now() - cached.ts > 5 * 60 * 1000) return null;
+    return cached.sha;
+  } catch {
+    return null;
+  }
+}
+
+function writeShaCache(key: string, sha: string): void {
+  try {
+    localStorage.setItem(key, JSON.stringify({ sha, ts: Date.now() }));
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 export function getDataBase(): string {

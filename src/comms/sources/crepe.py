@@ -181,7 +181,9 @@ class CrepeSource(Source):
                             for tag in _tag_names(detail_records, found):
                                 if tag not in tag_names:
                                     tag_names.append(tag)
-                except (RateLimitError, BudgetExceeded):
+                except ArtistNotFound:
+                    log.warning("CREPE type detail missing for %s/%s", username, slug)
+                except (RateLimitError, BudgetExceeded, SourceError):
                     raise
                 except Exception as exc:
                     log.warning("CREPE type detail failed for %s/%s: %s", username, slug, exc)

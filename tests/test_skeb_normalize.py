@@ -1,4 +1,13 @@
-from comms.sources.skeb import _image_url, _parse_work
+from pathlib import Path
+
+import pytest
+
+from comms.config import AppConfig
+from comms.http import RunBudget
+from comms.sources.base import SourceContext, SourceError
+from comms.sources.skeb import SkebSource, _image_url, _parse_work
+from comms.store.sqlite import SQLiteStore
+from comms.timeutil import now_ts
 
 
 def test_image_url_prefers_high_resolution() -> None:
@@ -40,3 +49,24 @@ def test_parse_work_rejects_other_artist_path() -> None:
         1.0,
     )
     assert work is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_works_propagates_source_errors(tmp_path: Path) -> None:
+    config = AppConfig()
+    source = SkebSource(config.sources.skeb, config)
+
+    async def fail(*args, **kwargs):
+        raise SourceError("HTTP 403", status_code=403)
+
+    source._get = fail  # type: ignore[method-assign]
+    with SQLiteStore(tmp_path / "archive.sqlite") as store:
+        ctx = SourceContext(config=config, store=store, budget=RunBudget(10, 60))
+        with pytest.raises(SourceError):
+            await source._fetch_works(
+                ctx,
+                "artist_1",
+                "alice",
+                {"received_works": []},
+                now_ts(),
+            )

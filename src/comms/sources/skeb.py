@@ -307,7 +307,9 @@ class SkebSource(Source):
                 if len(data) < page_size:
                     break
                 offset += page_size
-        except (RateLimitError, BudgetExceeded):
+        except ArtistNotFound:
+            log.warning("Skeb works endpoint has no page for %s; keeping profile works", handle)
+        except (RateLimitError, BudgetExceeded, SourceError):
             raise
         except Exception as exc:
             log.warning("Skeb works pagination failed for %s: %s", handle, exc)

@@ -22,6 +22,22 @@ CREPE_URL_RE = re.compile(
 )
 PLAIN_HANDLE_RE = re.compile(r"^@?([A-Za-z0-9_.-]{2,80})$")
 SUPPORTED_SUFFIXES = {".json", ".jsonl", ".csv", ".md", ".txt", ".list"}
+BIO_DOMAINS = (
+    "lit.link",
+    "tsunagu.cloud",
+    "vgen.co",
+    "potofu.me",
+    "fori.io",
+    "carrd.co",
+    "piku.page",
+    "linktr.ee",
+)
+BIO_LINK_RE = re.compile(
+    r"https?://(?:www\.)?("
+    + "|".join(re.escape(domain) for domain in BIO_DOMAINS)
+    + r")/[^\s<>\"'\)\]]+",
+    re.IGNORECASE,
+)
 
 
 def extract_seeds_from_text(
@@ -31,6 +47,7 @@ def extract_seeds_from_text(
     source: str = "text",
     priority: int = 0,
 ) -> list[Seed]:
+    text = text.replace("\\/", "/")
     seeds: list[Seed] = []
     for match in SKEB_URL_RE.finditer(text):
         seeds.append(
@@ -139,6 +156,47 @@ def import_gallery_dl_metadata(
         if index % 1000 == 0:
             log.info("Scanned %s/%s gallery-dl files (%s seeds)", index, len(files), len(seeds))
     return _dedupe(seeds)
+
+
+def extract_bio_links(text: str) -> list[str]:
+    text = text.replace("\\/", "/")
+    links: list[str] = []
+    seen: set[str] = set()
+    for match in BIO_LINK_RE.finditer(text):
+        link = match.group(0).rstrip(".,;:")
+        if link not in seen:
+            seen.add(link)
+            links.append(link)
+    return links
+
+
+def scan_gallery_dl_bio_links(
+    directory: str | Path,
+    *,
+    limit: int = 200,
+) -> list[str]:
+    root = Path(directory)
+    if not root.exists():
+        return []
+    links: list[str] = []
+    seen: set[str] = set()
+    for path in sorted(root.rglob("*.json")):
+        if limit > 0 and len(links) >= limit:
+            break
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for text in _walk_strings(data):
+            for link in extract_bio_links(text):
+                if link not in seen:
+                    seen.add(link)
+                    links.append(link)
+                    if limit > 0 and len(links) >= limit:
+                        break
+            if limit > 0 and len(links) >= limit:
+                break
+    return links
 
 
 def run_gallery_dl(config: TwitterConfig, *, workspace: Path) -> Path:
